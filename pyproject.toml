@@ -1,0 +1,40 @@
+[project]
+name = "grand-cinema-back"
+version = "0.1.0"
+description = "API de réservation du Grand Cinéma (Django et Django REST Framework)"
+requires-python = ">=3.14"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "--strict-markers"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "conftest.py",
+    "manage.py",
+    "config/asgi.py",
+    "config/wsgi.py",
+]
+
+[tool.ruff]
+# PEP 8 : 79 caractères par ligne au maximum
+line-length = 79
+target-version = "py314"
+# Fichiers générés automatiquement par Django
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+# E/W : style PEP 8 (comme flake8)  ·  F : erreurs (pyflakes)
+# I : ordre des imports (comme isort)  ·  N : conventions de nommage PEP 8
+# B : bugs probables  ·  UP : syntaxe Python moderne
+# S : sécurité (règles de bandit)  ·  DJ : bonnes pratiques Django
+select = ["E", "W", "F", "I", "N", "B", "UP", "S", "DJ"]
+
+[tool.ruff.lint.per-file-ignores]
+# Dans les tests : assert est l'outil de pytest (S101) et les mots de
+# passe écrits en dur sont des données de test fictives (S105, S106)
+"**/tests/*" = ["S101", "S105", "S106"]

@@ -1,0 +1,8 @@
+# Versions figées : le même environnement pour toute l'équipe, la CI et
+# le déploiement (pip freeze). Mise à jour : pip list --outdated, test,
+# puis modification de ce fichier.
+Django==5.2.18
+djangorestframework==3.18.1
+psycopg[binary]==3.3.6
+django-environ==0.14.0
+Pillow==12.3.0
