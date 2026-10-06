@@ -8,3 +8,6 @@ django-environ==0.14.0
 Pillow==12.3.0
 drf-spectacular==0.30.0
 django-cors-headers==4.9.0
+# Preprod et production (conteneur Azure Container Apps, H-02)
+gunicorn==26.2.0
+whitenoise==6.12.0
