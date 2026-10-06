@@ -28,6 +28,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "corsheaders",  # appels du front hébergé sur un autre domaine (H-01)
+    "drf_spectacular",  # documentation OpenAPI / Swagger de l'API
     # Modules métier de l'architecture du B1 (modules M1 à M6)
     "accounts",  # M6 Administration (EPIC 9)
     "programme",  # M1 Programme et séances (EPIC 1 et 6)
@@ -39,6 +41,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
+    # CORS : doit être placé avant CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -104,3 +108,37 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# API REST (Django REST Framework)
+REST_FRAMEWORK = {
+    # Sécurité par défaut (moindre privilège) : toute route exige d'être
+    # connecté, sauf celles déclarées publiques explicitement
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PAGINATION_CLASS": (
+        "rest_framework.pagination.PageNumberPagination"
+    ),
+    "PAGE_SIZE": 50,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# Documentation de l'API (OpenAPI 3, interface Swagger sur /api/docs/)
+SPECTACULAR_SETTINGS = {
+    "TITLE": "API Le Grand Cinéma",
+    "DESCRIPTION": (
+        "API de réservation du Grand Cinéma : programme, plan de salle, "
+        "réservations, paiement, billets, guichet et pilotage."
+    ),
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+# CORS : seules les adresses du front listées ici peuvent appeler l'API
+# (local : serveur de développement React ; Azure : Static Web Apps)
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
+)
