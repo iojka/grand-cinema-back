@@ -1,0 +1,17 @@
+# Base de données de développement local (environnement dev).
+# En préproduction et en production, la base est Azure Database for PostgreSQL (H-03).
+services:
+  db:
+    image: postgres:16
+    container_name: grandcinema-db
+    environment:
+      POSTGRES_DB: grandcinema
+      POSTGRES_USER: grandcinema
+      POSTGRES_PASSWORD: grandcinema  # mot de passe local uniquement, jamais utilisé sur Azure
+    ports:
+      - "5433:5432"  # port 5433 côté poste : le 5432 est déjà pris par le PostgreSQL installé sous Windows
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
