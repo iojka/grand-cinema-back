@@ -1,0 +1,60 @@
+# Intégration continue du back : à chaque push et à chaque pull request
+# vers develop ou main, GitHub vérifie la qualité du code et lance les tests.
+name: CI back
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  qualite-et-tests:
+    runs-on: ubuntu-latest
+
+    # Base PostgreSQL 16 temporaire, comme en local et sur Azure
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: grandcinema
+          POSTGRES_USER: grandcinema
+          POSTGRES_PASSWORD: grandcinema
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # Variables de test uniquement (aucun secret ici)
+    env:
+      SECRET_KEY: cle-uniquement-pour-la-ci
+      DEBUG: "False"
+      DATABASE_URL: postgres://grandcinema:grandcinema@localhost:5432/grandcinema
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Installer Python 3.14
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r requirements-dev.txt
+
+      - name: Vérifier la mise en forme (Ruff)
+        run: ruff format --check .
+
+      - name: Analyser le code (Ruff)
+        run: ruff check .
+
+      - name: Vérifier que les migrations sont à jour
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Lancer les tests avec la couverture
+        run: pytest --cov --cov-report=term-missing --cov-report=xml
