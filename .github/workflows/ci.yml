@@ -56,5 +56,8 @@ jobs:
       - name: Vérifier que les migrations sont à jour
         run: python manage.py makemigrations --check --dry-run
 
+      - name: Préparer les fichiers statiques (comme dans le conteneur)
+        run: python manage.py collectstatic --noinput
+
       - name: Lancer les tests avec la couverture
         run: pytest --cov --cov-report=term-missing --cov-report=xml
