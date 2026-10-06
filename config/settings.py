@@ -152,8 +152,9 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
 )
 
-# Preproduction et production : Azure termine le HTTPS avant le conteneur et le signale
-# par l'en-tête X-Forwarded-Proto. Les cookies ne passent qu'en HTTPS.
+# Préproduction et production : Azure termine le HTTPS avant le
+# conteneur et le signale par l'en-tête X-Forwarded-Proto.
+# Les cookies ne passent qu'en HTTPS.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
