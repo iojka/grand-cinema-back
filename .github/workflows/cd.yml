@@ -1,0 +1,37 @@
+# Livraison continue du back : à chaque fusion sur develop, GitHub
+# construit l'image Docker de l'API et la publie sur GitHub Container
+# Registry (ghcr.io). La préproduction Azure utilise cette image.
+name: CD back
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: # lancement à la main depuis l'onglet Actions
+
+jobs:
+  image-docker:
+    runs-on: ubuntu-latest
+
+    # Droit de publier une image dans les packages du dépôt
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE: ghcr.io/iojka/grand-cinema-back
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      # Jeton fourni automatiquement par GitHub, aucun secret à créer
+      - name: Se connecter à GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Deux étiquettes : le numéro du commit (version précise)
+      # et "develop" (dernière version de la préproduction)
+      - name: Construire l'image
+        run: docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:develop .
+
+      - name: Publier l'image
+        run: docker push --all-tags $IMAGE
