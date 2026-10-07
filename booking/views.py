@@ -1,6 +1,7 @@
-"""API publique du plan de salle et du blocage des places (US 2.1 et 2.2)"""
+"""API publique de la réservation : plan, blocage, panier (US 2.1 à 2.3)"""
 
 from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
@@ -8,12 +9,19 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from booking.models import Booking, Ticket
 from booking.serializers import (
     BookingHoldSerializer,
+    BookingSerializer,
     HoldSerializer,
     SeatMapSerializer,
+    TicketPriceSerializer,
 )
-from booking.services import hold_seats, release_expired_bookings
+from booking.services import (
+    change_ticket_price,
+    hold_seats,
+    release_expired_bookings,
+)
 from programme.models import next_screenings
 
 # Message affiché au spectateur si une place vient d'être prise (critère 2)
@@ -82,3 +90,52 @@ class HoldView(APIView):
             BookingHoldSerializer(booking).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+@extend_schema(
+    summary="Panier d'une réservation en attente", tags=["Réservation"]
+)
+class BookingView(RetrieveAPIView):
+    """Panier : places bloquées, tarifs proposés et total (US 2.3)
+
+    L'identifiant de la réservation (UUID non devinable) sert de clé au
+    spectateur sans compte ; une réservation expirée renvoie une 404
+    """
+
+    serializer_class = BookingSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        release_expired_bookings()
+        return Booking.objects.filter(status=Booking.Status.PENDING)
+
+
+class TicketPriceView(APIView):
+    """Choix du tarif d'une place du panier (US 2.3)"""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Choisir le tarif d'une place",
+        tags=["Réservation"],
+        request=TicketPriceSerializer,
+        responses={
+            200: BookingSerializer,
+            400: OpenApiResponse(description="Tarif inconnu ou désactivé"),
+            404: OpenApiResponse(description="Panier expiré ou inconnu"),
+        },
+    )
+    def patch(self, request, pk, ticket_id):
+        release_expired_bookings()
+        ticket = get_object_or_404(
+            Ticket,
+            pk=ticket_id,
+            booking_id=pk,
+            booking__status=Booking.Status.PENDING,
+        )
+        serializer = TicketPriceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = change_ticket_price(
+            ticket, serializer.validated_data["price"]
+        )
+        return Response(BookingSerializer(booking).data)
