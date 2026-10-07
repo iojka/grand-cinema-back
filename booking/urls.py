@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from booking.views import SeatMapView
+from booking.views import HoldView, SeatMapView
 
 urlpatterns = [
     path(
@@ -10,4 +10,5 @@ urlpatterns = [
         SeatMapView.as_view(),
         name="seat-map",
     ),
+    path("holds/", HoldView.as_view(), name="holds"),
 ]

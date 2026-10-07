@@ -139,11 +139,13 @@ class Booking(models.Model):
             ),
         ]
         constraints = [
-            # Une réservation en ligne doit avoir une adresse e-mail
-            # pour l'envoi du billet (US 4.2)
+            # Une réservation en ligne confirmée doit avoir une adresse
+            # e-mail pour l'envoi du billet (US 4.2). Les places sont
+            # bloquées avant la saisie des coordonnées (US 2.2 puis 2.4)
             models.CheckConstraint(
                 condition=models.Q(channel="BOX_OFFICE")
-                | ~models.Q(customer_email=""),
+                | ~models.Q(customer_email="")
+                | ~models.Q(status="CONFIRMED"),
                 name="web_booking_requires_email",
             ),
         ]

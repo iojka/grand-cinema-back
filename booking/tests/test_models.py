@@ -63,9 +63,16 @@ def test_released_seat_can_be_booked_again(make_booking, seats, price):
 
 
 def test_web_booking_requires_an_email(make_booking):
-    """Une réservation en ligne sans e-mail est refusée par la base"""
+    """Une réservation en ligne confirmée sans e-mail est refusée"""
     with pytest.raises(IntegrityError):
-        make_booking(customer_email="")
+        make_booking(customer_email="", status=Booking.Status.CONFIRMED)
+
+
+def test_held_web_booking_can_wait_for_the_email(make_booking):
+    """US 2.2 : les places sont bloquées avant la saisie de l'e-mail (2.4)"""
+    booking = make_booking(customer_email="")
+
+    assert booking.status == Booking.Status.PENDING
 
 
 def test_screening_with_bookings_cannot_be_deleted(make_booking, screening):
