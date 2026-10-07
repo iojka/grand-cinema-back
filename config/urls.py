@@ -17,6 +17,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
     path("api/auth/", include("accounts.urls")),
+    path("api/programme/", include("programme.urls")),
     # Documentation OpenAPI : schéma brut et interface Swagger
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
