@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
+from booking.models import Booking
 from booking.services import hold_seats
 from programme.models import Price
 
@@ -98,5 +99,25 @@ def test_expired_basket_cannot_be_changed(client, basket, reduced):
     basket.save()
 
     response = change_price(client, basket, ticket, reduced)
+
+    assert response.status_code == 404
+
+
+def test_cancelled_basket_releases_its_seats(client, basket):
+    """Critère 2 : changer de places annule le panier et libère ses places"""
+    response = client.delete(url(basket))
+
+    assert response.status_code == 204
+    basket.refresh_from_db()
+    assert basket.status == Booking.Status.CANCELLED
+    assert basket.tickets.count() == 0
+
+
+def test_expired_basket_cannot_be_cancelled(client, basket):
+    """Un panier expiré n'existe plus : erreur 404"""
+    basket.expires_at = timezone.now() - timedelta(minutes=1)
+    basket.save()
+
+    response = client.delete(url(basket))
 
     assert response.status_code == 404
