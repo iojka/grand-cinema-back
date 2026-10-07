@@ -14,6 +14,9 @@ from django.utils import timezone
 # US 6.1 : marge entre deux séances d'une même salle (sortie, nettoyage)
 CLEANING_MARGIN = timedelta(minutes=15)
 
+# US 1.1 : le programme couvre les 7 prochains jours
+PROGRAMME_DAYS = 7
+
 
 class Movie(models.Model):
     """Film à l'affiche, avec les informations de la fiche film (US 1.3)"""
@@ -260,3 +263,33 @@ class Screening(models.Model):
                     f"Cette séance chevauche « {other} » "
                     "(durée du film + 15 minutes de marge)."
                 )
+
+
+def next_screenings():
+    """Séances programmées des 7 prochains jours, avec les places restantes
+
+    Utilisée par le programme (US 1.1) et par la fiche film (US 1.3)
+
+    :return: les séances triées par date et heure
+    """
+    now = timezone.now()
+    return (
+        Screening.objects.filter(
+            status=Screening.Status.SCHEDULED,
+            starts_at__gte=now,
+            starts_at__lt=now + timedelta(days=PROGRAMME_DAYS),
+        )
+        # Film et salle chargés dans la même requête SQL (jointure)
+        .select_related("movie", "room")
+        # Places restantes = places actives de la salle - billets
+        # de la séance, calculé par la base en une seule requête
+        .annotate(
+            remaining_seats=models.Count(
+                "room__seats",
+                filter=models.Q(room__seats__is_active=True),
+                distinct=True,
+            )
+            - models.Count("tickets", distinct=True)
+        )
+        .order_by("starts_at")
+    )
