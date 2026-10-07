@@ -76,3 +76,16 @@ def change_ticket_price(ticket, price) -> Booking:
     booking.total_amount = total
     booking.save()
     return booking
+
+
+@transaction.atomic
+def cancel_booking(booking) -> None:
+    """Annule un panier en attente : ses places redeviennent libres
+
+    Utilisée quand le spectateur veut changer de places (US 2.3)
+
+    :param booking: réservation en attente de paiement
+    """
+    booking.tickets.all().delete()
+    booking.status = Booking.Status.CANCELLED
+    booking.save()

@@ -2,9 +2,13 @@
 
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, RetrieveDestroyAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +22,7 @@ from booking.serializers import (
     TicketPriceSerializer,
 )
 from booking.services import (
+    cancel_booking,
     change_ticket_price,
     hold_seats,
     release_expired_bookings,
@@ -92,14 +97,17 @@ class HoldView(APIView):
         )
 
 
-@extend_schema(
-    summary="Panier d'une réservation en attente", tags=["Réservation"]
+@extend_schema_view(
+    get=extend_schema(summary="Panier d'une réservation en attente"),
+    delete=extend_schema(summary="Annuler le panier pour changer de places"),
 )
-class BookingView(RetrieveAPIView):
+@extend_schema(tags=["Réservation"])
+class BookingView(RetrieveDestroyAPIView):
     """Panier : places bloquées, tarifs proposés et total (US 2.3)
 
     L'identifiant de la réservation (UUID non devinable) sert de clé au
-    spectateur sans compte ; une réservation expirée renvoie une 404
+    spectateur sans compte ; une réservation expirée renvoie une 404.
+    DELETE annule le panier pour que le spectateur change de places
     """
 
     serializer_class = BookingSerializer
@@ -108,6 +116,10 @@ class BookingView(RetrieveAPIView):
     def get_queryset(self):
         release_expired_bookings()
         return Booking.objects.filter(status=Booking.Status.PENDING)
+
+    def perform_destroy(self, instance):
+        # On garde la trace de la réservation : annulée, places libérées
+        cancel_booking(instance)
 
 
 class TicketPriceView(APIView):
