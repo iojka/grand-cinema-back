@@ -1,22 +1,29 @@
-"""M6 Administration : comptes du back office (US 9.1).
+"""M6 Administration : comptes du back office (US 9.1)
 
 Les spectateurs n'ont pas de compte (US 2.4, le compte client US 5.1 est
 prévu en V2) : leurs coordonnées sont enregistrées sur la réservation
-(booking.Booking).
+(booking.Booking)
 """
+
+from datetime import timedelta
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
+
+# US 9.1 : verrouillage du compte après 5 échecs de connexion consécutifs
+MAX_FAILED_LOGINS = 5
+LOCK_DURATION = timedelta(minutes=15)
 
 
 class UserManager(BaseUserManager):
-    """Création des comptes : l'adresse e-mail sert d'identifiant."""
+    """Création des comptes : l'adresse e-mail sert d'identifiant"""
 
     use_in_migrations = True
 
     def _create_user(self, email: str, password: str | None, **extra_fields):
-        """Crée et enregistre un compte avec un mot de passe haché.
+        """Crée et enregistre un compte avec un mot de passe haché
 
         :param email: adresse e-mail, identifiant de connexion
         :param password: mot de passe en clair, haché avant l'enregistrement
@@ -36,7 +43,7 @@ class UserManager(BaseUserManager):
     def create_user(
         self, email: str, password: str | None = None, **extra_fields
     ):
-        """Crée un compte du back office (rôle agent d'accueil par défaut).
+        """Crée un compte du back office (rôle agent d'accueil par défaut)
 
         :param email: adresse e-mail, identifiant de connexion
         :param password: mot de passe en clair
@@ -49,7 +56,7 @@ class UserManager(BaseUserManager):
     def create_superuser(
         self, email: str, password: str | None = None, **extra_fields
     ):
-        """Crée un compte administrateur (commande createsuperuser).
+        """Crée un compte administrateur (commande createsuperuser)
 
         :param email: adresse e-mail, identifiant de connexion
         :param password: mot de passe en clair
@@ -67,9 +74,9 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    """Compte du back office : ID, login (e-mail), mot de passe haché, rôle.
+    """Compte du back office : ID, login (e-mail), mot de passe haché, rôle
 
-    Les 4 rôles sont ceux de l'US 9.1.
+    Les 4 rôles sont ceux de l'US 9.1
     """
 
     class Role(models.TextChoices):
@@ -87,6 +94,13 @@ class User(AbstractUser):
         choices=Role.choices,
         default=Role.BOX_OFFICE,
     )
+    # Sécurité de la connexion (US 9.1)
+    failed_attempts = models.PositiveSmallIntegerField(
+        "échecs de connexion consécutifs", default=0
+    )
+    locked_until = models.DateTimeField(
+        "verrouillé jusqu'au", null=True, blank=True
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -102,3 +116,36 @@ class User(AbstractUser):
     def __str__(self) -> str:
         name = self.get_full_name() or self.email
         return f"{name} ({self.get_role_display()})"
+
+    def save(self, *args, **kwargs):
+        """Enregistre le compte en déduisant ses droits de son rôle
+
+        Seuls l'administrateur et la programmation entrent dans l'admin
+        Django, et seul l'administrateur a tous les droits (US 9.1)
+        """
+        self.is_staff = self.role in (self.Role.ADMIN, self.Role.PROGRAMMING)
+        self.is_superuser = self.role == self.Role.ADMIN
+        super().save(*args, **kwargs)
+
+    def is_locked(self) -> bool:
+        """Indique si le compte est verrouillé en ce moment
+
+        :return: True tant que la date de fin de verrouillage n'est pas passée
+        """
+        if self.locked_until is None:
+            return False
+        return self.locked_until > timezone.now()
+
+    def register_failed_login(self):
+        """Compte un échec de connexion et verrouille le compte au 5e"""
+        self.failed_attempts += 1
+        if self.failed_attempts >= MAX_FAILED_LOGINS:
+            self.locked_until = timezone.now() + LOCK_DURATION
+            self.failed_attempts = 0
+        self.save()
+
+    def reset_failed_logins(self):
+        """Remet le compteur d'échecs à zéro après une connexion réussie"""
+        self.failed_attempts = 0
+        self.locked_until = None
+        self.save()

@@ -1,12 +1,13 @@
-"""Configuration Django du projet Le Grand Cinéma.
+"""Configuration Django du projet Le Grand Cinéma
 
 Les valeurs propres à chaque environnement (dev, preprod, prod) ne sont
 jamais écrites ici : elles sont lues dans les variables d'environnement.
 En local, elles viennent du fichier .env (non versionné, modèle dans
 .env.example). Sur Azure, elles sont fournies au conteneur à partir du
-coffre-fort de secrets (Key Vault, H-05).
+coffre-fort de secrets (Key Vault, H-05)
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -84,6 +85,8 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 # Comptes du back office : modèle personnalisé (connexion par e-mail,
 # 4 rôles de l'US 9.1). Il doit être déclaré avant la 1re migration.
 AUTH_USER_MODEL = "accounts.User"
+# Connexion avec verrouillage après 5 échecs (US 9.1)
+AUTHENTICATION_BACKENDS = ["accounts.backends.LockoutBackend"]
 
 VALIDATORS_MODULE = "django.contrib.auth.password_validation"
 AUTH_PASSWORD_VALIDATORS = [
@@ -125,7 +128,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # Jeton JWT pour le front (en-tête Authorization: Bearer ...) ;
+    # session pour l'interface Swagger quand on est connecté à l'admin
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": (
@@ -133,6 +139,21 @@ REST_FRAMEWORK = {
     ),
     "PAGE_SIZE": 50,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# Jetons JWT : durée limitée, comme dans le cours (US 9.1)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=3),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
+
+# Journalisation des connexions (US 9.1), affichée dans la console :
+# sur Azure, ces lignes arrivent dans Log Analytics (H-06)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"accounts": {"handlers": ["console"], "level": "INFO"}},
 }
 
 # Documentation de l'API (OpenAPI 3, interface Swagger sur /api/docs/)
