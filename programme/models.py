@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 # US 6.1 : marge entre deux séances d'une même salle (sortie, nettoyage)
 CLEANING_MARGIN = timedelta(minutes=15)
@@ -207,7 +208,8 @@ class Screening(models.Model):
         ordering = ["starts_at"]
 
     def __str__(self) -> str:
-        start = f"{self.starts_at:%d/%m/%Y %H:%M}"
+        # La base stocke l'heure en UTC : on l'affiche à l'heure de Paris
+        start = f"{timezone.localtime(self.starts_at):%d/%m/%Y %H:%M}"
         return f"{self.movie.title} - {self.room} - {start}"
 
     def save(self, *args, **kwargs):
