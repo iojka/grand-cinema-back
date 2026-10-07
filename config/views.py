@@ -1,4 +1,4 @@
-"""Vues techniques de l'API."""
+"""Vues techniques de l'API"""
 
 from django.db import DatabaseError, connection
 from drf_spectacular.types import OpenApiTypes
@@ -16,7 +16,7 @@ from rest_framework.response import Response
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request):
-    """Vérifie que l'API répond et que la base est joignable.
+    """Vérifie que l'API répond et que la base est joignable
 
     Sert à Azure Container Apps pour surveiller le conteneur.
     :return: 200 si tout va bien, 503 si la base ne répond pas

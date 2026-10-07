@@ -1,6 +1,6 @@
-"""Point d'entrée WSGI du serveur de production.
+"""Point d'entrée WSGI du serveur de production
 
-Utilisé par le conteneur de l'API sur Azure Container Apps (H-02).
+Utilisé par le conteneur de l'API sur Azure Container Apps (H-02)
 """
 
 import os

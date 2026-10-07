@@ -1,4 +1,4 @@
-"""Tests du programme : places, salles, séances et données de référence."""
+"""Tests du programme : places, salles, séances et données de référence"""
 
 from datetime import timedelta
 
@@ -13,7 +13,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_seat_position_is_unique_in_a_room(room):
-    """Une salle ne peut pas avoir deux fois la place A1."""
+    """Une salle ne peut pas avoir deux fois la place A1"""
     Seat.objects.create(room=room, row="A", number=1)
 
     with pytest.raises(IntegrityError):
@@ -21,7 +21,7 @@ def test_seat_position_is_unique_in_a_room(room):
 
 
 def test_room_capacity_counts_only_active_seats(room, seats):
-    """Une place retirée du plan n'est plus comptée dans la capacité."""
+    """Une place retirée du plan n'est plus comptée dans la capacité"""
     seats[0].is_active = False
     seats[0].save()
 
@@ -29,14 +29,14 @@ def test_room_capacity_counts_only_active_seats(room, seats):
 
 
 def test_screening_end_is_start_plus_movie_duration(screening):
-    """La fin de la séance = début + durée du film (2 h)."""
+    """La fin de la séance = début + durée du film (2 h)"""
     duration = screening.ends_at - screening.starts_at
 
     assert duration == timedelta(minutes=120)
 
 
 def test_overlapping_screening_in_same_room_is_refused(screening, movie, room):
-    """US 6.1 : 2 h 10 après une séance de 2 h, la marge n'y est pas."""
+    """US 6.1 : 2 h 10 après une séance de 2 h, la marge n'y est pas"""
     overlapping = Screening(
         movie=movie,
         room=room,
@@ -48,7 +48,7 @@ def test_overlapping_screening_in_same_room_is_refused(screening, movie, room):
 
 
 def test_screening_after_cleaning_margin_is_accepted(screening, movie, room):
-    """US 6.1 : 2 h 15 après une séance de 2 h, la séance est acceptée."""
+    """US 6.1 : 2 h 15 après une séance de 2 h, la séance est acceptée"""
     following = Screening(
         movie=movie,
         room=room,
@@ -59,7 +59,7 @@ def test_screening_after_cleaning_margin_is_accepted(screening, movie, room):
 
 
 def test_same_time_in_another_room_is_accepted(screening, movie):
-    """Deux séances à la même heure dans deux salles sont possibles."""
+    """Deux séances à la même heure dans deux salles sont possibles"""
     other_room = Room.objects.create(
         name="Autre salle", category=Room.Category.VIP
     )
@@ -71,7 +71,7 @@ def test_same_time_in_another_room_is_accepted(screening, movie):
 
 
 def test_seed_creates_10_rooms_1700_seats_and_can_be_run_twice():
-    """Le jeu de données du B1 est complet et sans doublon si relancé."""
+    """Le jeu de données du B1 est complet et sans doublon si relancé"""
     call_command("seed_cinema")
     call_command("seed_cinema")
 

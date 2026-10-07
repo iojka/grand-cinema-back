@@ -1,1 +1,1 @@
-"""Tests de l'application payment."""
+"""Tests de l'application payment"""

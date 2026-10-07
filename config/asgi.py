@@ -1,6 +1,6 @@
-"""Point d'entrée ASGI.
+"""Point d'entrée ASGI
 
-Non utilisé pour le MVP, conservé pour une évolution éventuelle.
+Non utilisé pour le MVP, conservé pour une évolution éventuelle
 """
 
 import os

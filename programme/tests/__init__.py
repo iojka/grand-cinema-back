@@ -1,1 +1,1 @@
-"""Tests de l'application programme."""
+"""Tests de l'application programme"""

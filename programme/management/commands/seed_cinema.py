@@ -1,9 +1,9 @@
-"""Données de référence : 10 salles, 1 700 places et la grille tarifaire.
+"""Données de référence : 10 salles, 1 700 places et la grille tarifaire
 
 Usage : python manage.py seed_cinema
 La commande peut être relancée sans créer de doublons (contraintes
 d'unicité). Les prix et suppléments sont des hypothèses de travail,
-modifiables par Isabelle dans le back office (US 6.2).
+modifiables par Isabelle dans le back office (US 6.2)
 """
 
 import string
@@ -43,15 +43,15 @@ PRICES = [
 
 
 class Command(BaseCommand):
-    """Commande manage.py qui charge les données de référence."""
+    """Commande manage.py qui charge les données de référence"""
 
     help = "Crée les 10 salles, leurs 1 700 places et les tarifs."
 
     @transaction.atomic
     def handle(self, *args, **options) -> None:
-        """Crée ou met à jour salles, places et tarifs en une transaction.
+        """Crée ou met à jour salles, places et tarifs en une transaction
 
-        En cas d'erreur, rien n'est enregistré (transaction annulée).
+        En cas d'erreur, rien n'est enregistré (transaction annulée)
         """
         for name, category, supplement, rows, seats_per_row in ROOMS:
             room, _ = Room.objects.update_or_create(

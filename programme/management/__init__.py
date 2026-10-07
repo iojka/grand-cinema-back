@@ -1,1 +1,1 @@
-"""Commandes manage.py de l'application programme."""
+"""Commandes manage.py de l'application programme"""

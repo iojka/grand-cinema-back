@@ -1,4 +1,4 @@
-"""M2 Réservation et stock de places (EPIC 2 et 7).
+"""M2 Réservation et stock de places (EPIC 2 et 7)
 
 États d'une place pour une séance (règle métier du B1) :
 - libre : aucune ligne Ticket pour le couple (séance, place) ;
@@ -7,7 +7,7 @@
 - vendue : la ligne Ticket passe au statut SOLD (paiement Stripe
   confirmé ou vente au guichet).
 La contrainte d'unicité (séance, place) empêche toute double vente,
-en ligne comme au guichet.
+en ligne comme au guichet
 """
 
 import secrets
@@ -29,7 +29,7 @@ REFERENCE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def generate_reference() -> str:
-    """Génère la référence courte communiquée au spectateur.
+    """Génère la référence courte communiquée au spectateur
 
     Le module secrets produit une valeur non prévisible.
 
@@ -39,7 +39,7 @@ def generate_reference() -> str:
 
 
 class Booking(models.Model):
-    """Réservation d'une ou plusieurs places pour une séance."""
+    """Réservation d'une ou plusieurs places pour une séance"""
 
     class Channel(models.TextChoices):
         WEB = "WEB", "En ligne"
@@ -153,7 +153,7 @@ class Booking(models.Model):
 
 
 class Ticket(models.Model):
-    """Place réservée pour une séance : une ligne = un billet (QR code)."""
+    """Place réservée pour une séance : une ligne = un billet (QR code)"""
 
     class Status(models.TextChoices):
         HELD = "HELD", "Bloquée"
@@ -225,7 +225,7 @@ class Ticket(models.Model):
         return f"{self.seat} - {self.get_status_display()}"
 
     def clean(self) -> None:
-        """Vérifie la cohérence du billet avec sa réservation.
+        """Vérifie la cohérence du billet avec sa réservation
 
         :raises ValidationError: si la séance n'est pas celle de la
             réservation ou si la place n'est pas dans la bonne salle
