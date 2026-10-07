@@ -7,6 +7,8 @@ psycopg[binary]==3.3.6
 django-environ==0.14.0
 Pillow==12.3.0
 drf-spectacular==0.30.0
+# Connexion du personnel par jeton JWT (US 9.1)
+djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.9.0
 # Preprod et production (conteneur Azure Container Apps, H-02)
 gunicorn==26.2.0

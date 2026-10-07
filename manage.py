@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""Utilitaire en ligne de commande de Django.
+"""Utilitaire en ligne de commande de Django
 
-Exemples : runserver, makemigrations, migrate, createsuperuser.
+Exemples : runserver, makemigrations, migrate, createsuperuser
 """
 
 import os
@@ -9,7 +9,7 @@ import sys
 
 
 def main() -> None:
-    """Exécute la commande Django passée en argument."""
+    """Exécute la commande Django passée en argument"""
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
     from django.core.management import execute_from_command_line
 

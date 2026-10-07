@@ -1,1 +1,1 @@
-"""Application programme : films, salles, places, tarifs, séances (M1)."""
+"""Application programme : films, salles, places, tarifs, séances (M1)"""

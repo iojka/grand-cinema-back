@@ -1,1 +1,1 @@
-"""Tests de l'application accounts."""
+"""Tests de l'application accounts"""

@@ -1,1 +1,1 @@
-"""Tests de l'application booking."""
+"""Tests de l'application booking"""

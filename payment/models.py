@@ -1,8 +1,8 @@
-"""M3 Paiement (EPIC 3) : journal des notifications Stripe reçues.
+"""M3 Paiement (EPIC 3) : journal des notifications Stripe reçues
 
 Contrôle anti-doublon (B1) : Stripe peut envoyer plusieurs fois la même
 notification. L'identifiant de l'événement est unique en base : un même
-événement n'est donc traité qu'une seule fois.
+événement n'est donc traité qu'une seule fois
 """
 
 from django.db import models
@@ -11,7 +11,7 @@ from booking.models import Booking
 
 
 class StripeEvent(models.Model):
-    """Notification de paiement reçue de Stripe (webhook signé)."""
+    """Notification de paiement reçue de Stripe (webhook signé)"""
 
     event_id = models.CharField(
         "identifiant de l'événement Stripe", max_length=255, unique=True

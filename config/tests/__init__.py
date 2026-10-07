@@ -1,1 +1,1 @@
-"""Tests du socle de l'API (routes techniques et documentation)."""
+"""Tests du socle de l'API (routes techniques et documentation)"""

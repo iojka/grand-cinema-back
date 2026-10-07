@@ -1,6 +1,6 @@
-"""M1 Programme et séances : films, salles, places, tarifs et séances.
+"""M1 Programme et séances : films, salles, places, tarifs et séances
 
-Couvre les EPIC 1 (consulter le programme) et 6 (gérer la programmation).
+Couvre les EPIC 1 (consulter le programme) et 6 (gérer la programmation)
 """
 
 from datetime import datetime, timedelta
@@ -14,7 +14,7 @@ CLEANING_MARGIN = timedelta(minutes=15)
 
 
 class Movie(models.Model):
-    """Film à l'affiche, avec les informations de la fiche film (US 1.3)."""
+    """Film à l'affiche, avec les informations de la fiche film (US 1.3)"""
 
     class Rating(models.TextChoices):
         ALL = "TP", "Tous publics"
@@ -54,7 +54,7 @@ class Movie(models.Model):
 
 
 class Room(models.Model):
-    """Salle du cinéma ; le supplément s'ajoute au tarif (US 2.3, 6.2)."""
+    """Salle du cinéma ; le supplément s'ajoute au tarif (US 2.3, 6.2)"""
 
     class Category(models.TextChoices):
         PREMIUM = "PREMIUM", "Premium / IMAX"
@@ -84,7 +84,7 @@ class Room(models.Model):
 
     @property
     def capacity(self) -> int:
-        """Calcule la capacité de la salle.
+        """Calcule la capacité de la salle
 
         :return: le nombre de places actives du plan de salle
         """
@@ -92,10 +92,10 @@ class Room(models.Model):
 
 
 class Seat(models.Model):
-    """Place physique d'une salle.
+    """Place physique d'une salle
 
     Deux places sont côte à côte si elles sont dans la même rangée avec
-    des numéros qui se suivent (US 2.2).
+    des numéros qui se suivent (US 2.2)
     """
 
     room = models.ForeignKey(
@@ -127,7 +127,7 @@ class Seat(models.Model):
 
 
 class Price(models.Model):
-    """Tarif de base (plein, réduit, enfant), paramétré par Isabelle."""
+    """Tarif de base (plein, réduit, enfant), paramétré par Isabelle"""
 
     label = models.CharField("libellé", max_length=50, unique=True)
     # DECIMAL : seul type qui garantit des calculs exacts sur les prix
@@ -152,7 +152,7 @@ class Price(models.Model):
 
 
 class Screening(models.Model):
-    """Séance : un film projeté dans une salle à une date et une heure."""
+    """Séance : un film projeté dans une salle à une date et une heure"""
 
     class Status(models.TextChoices):
         SCHEDULED = "SCHEDULED", "Programmée"
@@ -192,14 +192,14 @@ class Screening(models.Model):
 
     @property
     def ends_at(self) -> datetime:
-        """Calcule l'heure de fin de la séance.
+        """Calcule l'heure de fin de la séance
 
         :return: l'heure de début augmentée de la durée du film
         """
         return self.starts_at + timedelta(minutes=self.movie.duration_minutes)
 
     def clean(self) -> None:
-        """Refuse une séance qui en chevauche une autre (US 6.1).
+        """Refuse une séance qui en chevauche une autre (US 6.1)
 
         Deux séances d'une même salle doivent être séparées par la durée
         du film et 15 minutes de marge.

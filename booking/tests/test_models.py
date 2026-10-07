@@ -1,4 +1,4 @@
-"""Tests des réservations et du stock unique de places (US 2.2, 7.2)."""
+"""Tests des réservations et du stock unique de places (US 2.2, 7.2)"""
 
 from decimal import Decimal
 
@@ -14,7 +14,7 @@ pytestmark = pytest.mark.django_db
 
 
 def make_ticket(booking, seat, price):
-    """Crée un billet bloqué pour la séance de la réservation.
+    """Crée un billet bloqué pour la séance de la réservation
 
     :param booking: réservation à laquelle rattacher le billet
     :param seat: place réservée
@@ -31,7 +31,7 @@ def make_ticket(booking, seat, price):
 
 
 def test_booking_gets_a_short_unique_reference(make_booking):
-    """Chaque réservation reçoit une référence de 8 caractères lisibles."""
+    """Chaque réservation reçoit une référence de 8 caractères lisibles"""
     first = make_booking()
     second = make_booking()
 
@@ -43,7 +43,7 @@ def test_booking_gets_a_short_unique_reference(make_booking):
 def test_same_seat_cannot_be_taken_twice_for_a_screening(
     make_booking, seats, price
 ):
-    """Pas de double vente : une place vendue en ligne puis au guichet."""
+    """Pas de double vente : une place vendue en ligne puis au guichet"""
     make_ticket(make_booking(), seats[0], price)
     box_office = make_booking(
         channel=Booking.Channel.BOX_OFFICE, customer_email=""
@@ -54,7 +54,7 @@ def test_same_seat_cannot_be_taken_twice_for_a_screening(
 
 
 def test_released_seat_can_be_booked_again(make_booking, seats, price):
-    """Une place libérée après expiration du blocage redevient libre."""
+    """Une place libérée après expiration du blocage redevient libre"""
     expired = make_booking()
     make_ticket(expired, seats[0], price)
     expired.tickets.all().delete()  # la tâche planifiée libère la place
@@ -63,13 +63,13 @@ def test_released_seat_can_be_booked_again(make_booking, seats, price):
 
 
 def test_web_booking_requires_an_email(make_booking):
-    """Une réservation en ligne sans e-mail est refusée par la base."""
+    """Une réservation en ligne sans e-mail est refusée par la base"""
     with pytest.raises(IntegrityError):
         make_booking(customer_email="")
 
 
 def test_screening_with_bookings_cannot_be_deleted(make_booking, screening):
-    """US 6.1 : une séance qui a des réservations ne peut être supprimée."""
+    """US 6.1 : une séance qui a des réservations ne peut être supprimée"""
     make_booking()
 
     with pytest.raises(ProtectedError):
@@ -77,7 +77,7 @@ def test_screening_with_bookings_cannot_be_deleted(make_booking, screening):
 
 
 def test_ticket_seat_must_belong_to_the_screening_room(make_booking, price):
-    """Un billet ne peut pas porter sur une place d'une autre salle."""
+    """Un billet ne peut pas porter sur une place d'une autre salle"""
     other_room = Room.objects.create(
         name="Autre salle", category=Room.Category.VIP
     )

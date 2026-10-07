@@ -1,1 +1,1 @@
-"""Application booking : réservations et stock de places (M2)."""
+"""Application booking : réservations et stock de places (M2)"""
