@@ -17,6 +17,7 @@ from booking.models import Booking, Ticket
 from booking.serializers import (
     BookingHoldSerializer,
     BookingSerializer,
+    CustomerSerializer,
     HoldSerializer,
     SeatMapSerializer,
     TicketPriceSerializer,
@@ -150,4 +151,30 @@ class TicketPriceView(APIView):
         booking = change_ticket_price(
             ticket, serializer.validated_data["price"]
         )
+        return Response(BookingSerializer(booking).data)
+
+
+class CustomerView(APIView):
+    """Coordonnées du spectateur sans compte (US 2.4)"""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        summary="Enregistrer les coordonnées du spectateur",
+        tags=["Réservation"],
+        request=CustomerSerializer,
+        responses={
+            200: BookingSerializer,
+            400: OpenApiResponse(description="Coordonnées incomplètes"),
+            404: OpenApiResponse(description="Panier expiré ou inconnu"),
+        },
+    )
+    def patch(self, request, pk):
+        release_expired_bookings()
+        booking = get_object_or_404(
+            Booking, pk=pk, status=Booking.Status.PENDING
+        )
+        serializer = CustomerSerializer(booking, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(BookingSerializer(booking).data)

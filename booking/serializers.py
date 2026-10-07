@@ -1,4 +1,4 @@
-"""Données de réservation échangées avec l'API (US 2.1, 2.2 et 2.3)"""
+"""Données de réservation échangées avec l'API (US 2.1 à 2.4)"""
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
@@ -175,3 +175,50 @@ class TicketPriceSerializer(serializers.Serializer):
     price = serializers.PrimaryKeyRelatedField(
         queryset=Price.objects.filter(is_active=True)
     )
+
+
+class CustomerSerializer(serializers.ModelSerializer):
+    """Coordonnées du spectateur sans compte (US 2.4)
+
+    Seuls le nom, l'e-mail (saisi deux fois) et le code postal ou le pays
+    sont demandés : minimisation des données (RGPD)
+    """
+
+    email_confirmation = serializers.EmailField(write_only=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            "customer_name",
+            "customer_email",
+            "email_confirmation",
+            "customer_postcode",
+            "customer_country",
+        ]
+        # Champs facultatifs dans le modèle (guichet), obligatoires ici
+        extra_kwargs = {
+            "customer_name": {"required": True, "allow_blank": False},
+            "customer_email": {"required": True, "allow_blank": False},
+        }
+
+    def validate_customer_country(self, country):
+        """Pays au format ISO à 2 lettres, par exemple DE ou GB"""
+        if country and (len(country) != 2 or not country.isalpha()):
+            raise serializers.ValidationError(
+                "Indiquez le code du pays en 2 lettres (par exemple DE)."
+            )
+        return country.upper()
+
+    def validate(self, data):
+        """Vérifie les deux e-mails et la présence du code postal ou du pays"""
+        if data["customer_email"] != data.pop("email_confirmation"):
+            raise serializers.ValidationError(
+                "Les deux adresses e-mail sont différentes."
+            )
+        postcode = data.get("customer_postcode", "")
+        country = data.get("customer_country", "")
+        if not postcode and not country:
+            raise serializers.ValidationError(
+                "Indiquez votre code postal ou votre pays."
+            )
+        return data
