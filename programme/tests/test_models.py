@@ -1,11 +1,12 @@
 """Tests du programme : places, salles, séances et données de référence"""
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError
+from django.utils import timezone
 
 from programme.models import Price, Room, Screening, Seat
 
@@ -33,6 +34,19 @@ def test_screening_end_is_start_plus_movie_duration(screening):
     duration = screening.ends_at - screening.starts_at
 
     assert duration == timedelta(minutes=120)
+
+
+def test_screening_is_displayed_in_local_time(movie, room):
+    """L'admin affiche l'heure de Paris, pas l'heure UTC de la base"""
+    day = timezone.localdate() + timedelta(days=1)
+    screening = Screening.objects.create(
+        movie=movie,
+        room=room,
+        starts_at=timezone.make_aware(datetime.combine(day, time(20, 30))),
+    )
+    screening.refresh_from_db()
+
+    assert "20:30" in str(screening)
 
 
 def test_overlapping_screening_in_same_room_is_refused(screening, movie, room):
