@@ -49,6 +49,13 @@ class Movie(models.Model):
         db_table = "movies"
         verbose_name = "film"
         ordering = ["title"]
+        constraints = [
+            # La base refuse elle aussi une durée nulle (US 6.1)
+            models.CheckConstraint(
+                condition=models.Q(duration_minutes__gte=1),
+                name="movie_duration_positive",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.version})"
@@ -202,6 +209,15 @@ class Screening(models.Model):
     def __str__(self) -> str:
         start = f"{self.starts_at:%d/%m/%Y %H:%M}"
         return f"{self.movie.title} - {self.room} - {start}"
+
+    def save(self, *args, **kwargs):
+        """Enregistre la séance après avoir vérifié ses règles (US 6.1)
+
+        full_clean() appelle clean() : le chevauchement est refusé
+        partout, pas seulement dans les formulaires de l'admin
+        """
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def ends_at(self) -> datetime:

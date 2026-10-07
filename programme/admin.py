@@ -97,7 +97,9 @@ class PriceAdmin(ProgrammationAdmin):
 
 @admin.register(Screening)
 class ScreeningAdmin(ProgrammationAdmin):
-    """Liste des séances"""
+    """Séances : chevauchement refusé avec un message (US 6.1)"""
 
     list_display = ("movie", "room", "starts_at", "status")
     list_filter = ("room", "status")
+    # Navigation par date dans la liste des séances
+    date_hierarchy = "starts_at"
