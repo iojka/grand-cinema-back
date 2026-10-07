@@ -1,9 +1,11 @@
-"""Plan de salle d'une séance envoyé par l'API (US 2.1)"""
+"""Données de réservation échangées avec l'API (US 2.1 et 2.2)"""
 
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from programme.models import Seat
+from booking.models import Booking
+from programme.models import Screening, Seat
 from programme.serializers import ScreeningSerializer
 
 # État d'une place sans billet pour la séance (les autres états sont
@@ -43,3 +45,58 @@ class SeatMapSerializer(ScreeningSerializer):
             taken[ticket.seat_id] = ticket.status
         seats = screening.room.seats.filter(is_active=True)
         return SeatSerializer(seats, many=True, context={"taken": taken}).data
+
+
+class HoldSerializer(serializers.Serializer):
+    """Demande de blocage : une séance et des places côte à côte (US 2.2)"""
+
+    screening = serializers.PrimaryKeyRelatedField(
+        queryset=Screening.objects.all()
+    )
+    seats = serializers.PrimaryKeyRelatedField(
+        queryset=Seat.objects.filter(is_active=True),
+        many=True,
+        allow_empty=False,
+    )
+
+    def validate_screening(self, screening):
+        """Seule une séance programmée et à venir est réservable"""
+        if (
+            screening.status != Screening.Status.SCHEDULED
+            or screening.starts_at <= timezone.now()
+        ):
+            raise serializers.ValidationError(
+                "Cette séance n'est plus réservable."
+            )
+        return screening
+
+    def validate(self, data):
+        """Vérifie que les places sont dans la salle et côte à côte
+
+        Côte à côte : même rangée et numéros qui se suivent ; le maximum
+        est donc la taille de la rangée (critère 1)
+        """
+        screening = data["screening"]
+        seats = sorted(data["seats"], key=lambda seat: seat.number)
+        for seat in seats:
+            if seat.room_id != screening.room_id:
+                raise serializers.ValidationError(
+                    "Les places doivent être dans la salle de la séance."
+                )
+        numbers = [seat.number for seat in seats]
+        expected = list(range(numbers[0], numbers[0] + len(seats)))
+        same_row = len({seat.row for seat in seats}) == 1
+        if not same_row or numbers != expected:
+            raise serializers.ValidationError(
+                "Les places doivent être côte à côte, dans la même rangée."
+            )
+        data["seats"] = seats
+        return data
+
+
+class BookingHoldSerializer(serializers.ModelSerializer):
+    """Réservation en attente renvoyée après le blocage des places"""
+
+    class Meta:
+        model = Booking
+        fields = ["id", "reference", "expires_at", "total_amount"]
