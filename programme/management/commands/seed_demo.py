@@ -47,7 +47,7 @@ MOVIES = [
     (
         "Minuit sur l'Aubrac",
         "Une nuit d'hiver, une gendarme enquête sur la disparition "
-        "d'un randonneur dans la piste de bête du Gévaudan.",
+        "d'un randonneur dans la piste de la bête du Gévaudan.",
         118,
         Rating.UNDER_12,
         Version.VOST,
