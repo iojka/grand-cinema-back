@@ -1,4 +1,4 @@
-"""Back office du programme (minimal, enrichi avec les US 6.1 et 6.2)"""
+"""Back office du programme (droits US 9.1, salles et tarifs US 6.2)"""
 
 from django.contrib import admin
 
@@ -6,10 +6,11 @@ from accounts.models import User
 from programme.models import Movie, Price, Room, Screening, Seat
 
 
-class ProgrammationAdmin(admin.ModelAdmin):
-    """Écrans du programme : administrateur et programmation (US 9.1)
+class ProgrammationAccess:
+    """Droits des écrans du programme : administrateur et programmation
 
-    Les autres rôles ne voient pas ces écrans dans l'admin
+    Classe ajoutée par héritage aux écrans (ModelAdmin) et aux tableaux
+    intégrés (inlines) : les autres rôles ne les voient pas (US 9.1)
     """
 
     allowed_roles = [User.Role.ADMIN, User.Role.PROGRAMMING]
@@ -29,7 +30,7 @@ class ProgrammationAdmin(admin.ModelAdmin):
     def has_view_permission(self, request, obj=None):
         return self.has_role(request)
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj=None):
         return self.has_role(request)
 
     def has_change_permission(self, request, obj=None):
@@ -37,6 +38,22 @@ class ProgrammationAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return self.has_role(request)
+
+
+class ProgrammationAdmin(ProgrammationAccess, admin.ModelAdmin):
+    """Écran du programme réservé à l'administrateur et à la programmation"""
+
+
+class SeatInline(ProgrammationAccess, admin.TabularInline):
+    """Plan de la salle : ses places, modifiables sur la fiche de la salle
+
+    US 6.2 : une place retirée du plan est désactivée plutôt que
+    supprimée, pour garder les billets déjà vendus cohérents
+    """
+
+    model = Seat
+    fields = ("row", "number", "is_accessible", "is_active")
+    extra = 0
 
 
 @admin.register(Movie)
@@ -55,9 +72,12 @@ class MovieAdmin(ProgrammationAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ProgrammationAdmin):
-    """Liste des salles avec leur capacité"""
+    """Salles : catégorie, supplément et plan de salle (US 6.2)"""
 
     list_display = ("name", "category", "supplement", "capacity")
+    fields = ("name", "category", "supplement", "capacity")
+    readonly_fields = ("capacity",)
+    inlines = [SeatInline]
 
 
 @admin.register(Seat)
@@ -70,7 +90,7 @@ class SeatAdmin(ProgrammationAdmin):
 
 @admin.register(Price)
 class PriceAdmin(ProgrammationAdmin):
-    """Grille tarifaire"""
+    """Grille tarifaire (US 6.2)"""
 
     list_display = ("label", "amount", "requires_proof", "is_active")
 

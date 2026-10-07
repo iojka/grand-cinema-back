@@ -4,6 +4,7 @@ Couvre les EPIC 1 (consulter le programme) et 6 (gérer la programmation)
 """
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
@@ -149,6 +150,18 @@ class Price(models.Model):
 
     def __str__(self) -> str:
         return f"{self.label} ({self.amount} €)"
+
+    def amount_for(self, room: Room) -> Decimal:
+        """Calcule le prix d'une place : tarif + supplément de la salle
+
+        Le prix calculé est recopié dans le billet (Ticket.unit_price) :
+        une modification du tarif ne change pas les billets déjà payés
+        (US 6.2)
+
+        :param room: salle de la séance (supplément IMAX / VIP)
+        :return: le prix de la place en euros
+        """
+        return self.amount + room.supplement
 
 
 class Screening(models.Model):
