@@ -1,12 +1,12 @@
-"""Données de réservation échangées avec l'API (US 2.1 et 2.2)"""
+"""Données de réservation échangées avec l'API (US 2.1, 2.2 et 2.3)"""
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from booking.models import Booking
-from programme.models import Screening, Seat
-from programme.serializers import ScreeningSerializer
+from booking.models import Booking, Ticket
+from programme.models import Price, Screening, Seat
+from programme.serializers import MovieSerializer, ScreeningSerializer
 
 # État d'une place sans billet pour la séance (les autres états sont
 # ceux du billet : HELD bloquée, SOLD vendue)
@@ -100,3 +100,78 @@ class BookingHoldSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ["id", "reference", "expires_at", "total_amount"]
+
+
+class PriceSerializer(serializers.ModelSerializer):
+    """Tarif proposé pour une séance, supplément de la salle compris"""
+
+    amount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Price
+        fields = ["id", "label", "amount", "requires_proof"]
+
+    def get_amount(self, price) -> str:
+        """Prix d'une place : même calcul qu'au guichet (US 6.2 et 7.2)"""
+        return str(price.amount_for(self.context["room"]))
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    """Place du panier avec son tarif et son prix"""
+
+    seat = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = ["id", "seat", "price", "unit_price"]
+
+    def get_seat(self, ticket) -> str:
+        """Place affichée sous la forme « A1 »"""
+        return f"{ticket.seat.row}{ticket.seat.number}"
+
+
+class BookingScreeningSerializer(serializers.ModelSerializer):
+    """Séance rappelée dans le panier"""
+
+    movie = MovieSerializer(read_only=True)
+    room = serializers.CharField(source="room.name", read_only=True)
+
+    class Meta:
+        model = Screening
+        fields = ["id", "starts_at", "room", "movie"]
+
+
+class BookingSerializer(serializers.ModelSerializer):
+    """Panier : séance, places et leur tarif, total, tarifs proposés"""
+
+    screening = BookingScreeningSerializer(read_only=True)
+    tickets = TicketSerializer(many=True, read_only=True)
+    prices = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Booking
+        fields = [
+            "id",
+            "reference",
+            "status",
+            "expires_at",
+            "total_amount",
+            "screening",
+            "tickets",
+            "prices",
+        ]
+
+    @extend_schema_field(PriceSerializer(many=True))
+    def get_prices(self, booking):
+        """Tarifs actifs paramétrés par Isabelle (critère 1 de l'US 2.3)"""
+        prices = Price.objects.filter(is_active=True)
+        room = booking.screening.room
+        return PriceSerializer(prices, many=True, context={"room": room}).data
+
+
+class TicketPriceSerializer(serializers.Serializer):
+    """Tarif choisi pour une place : seuls les tarifs actifs sont acceptés"""
+
+    price = serializers.PrimaryKeyRelatedField(
+        queryset=Price.objects.filter(is_active=True)
+    )

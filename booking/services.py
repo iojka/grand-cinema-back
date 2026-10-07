@@ -56,3 +56,23 @@ def hold_seats(screening, seats) -> Booking:
             unit_price=unit_price,
         )
     return booking
+
+
+@transaction.atomic
+def change_ticket_price(ticket, price) -> Booking:
+    """Applique un tarif à une place puis recalcule le total (US 2.3)
+
+    :param ticket: place du panier
+    :param price: tarif choisi, déjà vérifié (actif)
+    :return: la réservation avec son nouveau total
+    """
+    ticket.price = price
+    ticket.unit_price = price.amount_for(ticket.screening.room)
+    ticket.save()
+    booking = ticket.booking
+    total = 0
+    for item in booking.tickets.all():
+        total += item.unit_price
+    booking.total_amount = total
+    booking.save()
+    return booking
