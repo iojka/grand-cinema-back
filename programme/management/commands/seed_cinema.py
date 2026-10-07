@@ -1,9 +1,10 @@
 """Données de référence : 10 salles, 1 700 places et la grille tarifaire
 
 Usage : python manage.py seed_cinema
-La commande peut être relancée sans créer de doublons (contraintes
-d'unicité). Les prix et suppléments sont des hypothèses de travail,
-modifiables par Isabelle dans le back office (US 6.2)
+La commande peut être relancée : elle crée seulement ce qui manque et
+ne modifie jamais une salle ou un tarif existants. Les prix et
+suppléments sont des hypothèses de travail, modifiables par Isabelle
+dans le back office (US 6.2)
 """
 
 import string
@@ -49,12 +50,14 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options) -> None:
-        """Crée ou met à jour salles, places et tarifs en une transaction
+        """Crée les salles, places et tarifs manquants en une transaction
 
         En cas d'erreur, rien n'est enregistré (transaction annulée)
         """
         for name, category, supplement, rows, seats_per_row in ROOMS:
-            room, _ = Room.objects.update_or_create(
+            # get_or_create : une salle existante n'est pas modifiée
+            # (le supplément a pu être changé par Isabelle, US 6.2)
+            room, _ = Room.objects.get_or_create(
                 name=name,
                 defaults={"category": category, "supplement": supplement},
             )
@@ -75,7 +78,7 @@ class Command(BaseCommand):
             Seat.objects.bulk_create(seats, ignore_conflicts=True)
 
         for label, amount, requires_proof in PRICES:
-            Price.objects.update_or_create(
+            Price.objects.get_or_create(
                 label=label,
                 defaults={"amount": amount, "requires_proof": requires_proof},
             )
