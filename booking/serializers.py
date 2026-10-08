@@ -159,6 +159,10 @@ class BookingSerializer(serializers.ModelSerializer):
             "screening",
             "tickets",
             "prices",
+            "customer_name",
+            "customer_email",
+            "customer_postcode",
+            "customer_country",
         ]
 
     @extend_schema_field(PriceSerializer(many=True))
