@@ -4,6 +4,7 @@ from django.urls import path
 
 from booking.views import (
     BookingView,
+    ConfirmationView,
     CustomerView,
     HoldView,
     SeatMapView,
@@ -22,6 +23,11 @@ urlpatterns = [
         "bookings/<uuid:pk>/customer/",
         CustomerView.as_view(),
         name="booking-customer",
+    ),
+    path(
+        "bookings/<uuid:pk>/confirmation/",
+        ConfirmationView.as_view(),
+        name="booking-confirmation",
     ),
     path(
         "bookings/<uuid:pk>/tickets/<uuid:ticket_id>/",

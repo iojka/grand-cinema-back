@@ -1,4 +1,4 @@
-"""API publique de la réservation : plan, blocage, panier (US 2.1 à 2.3)"""
+"""API publique de la réservation : plan, blocage, panier (US 2.1 à 3.3)"""
 
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
@@ -17,6 +17,7 @@ from booking.models import Booking, Ticket
 from booking.serializers import (
     BookingHoldSerializer,
     BookingSerializer,
+    ConfirmationSerializer,
     CustomerSerializer,
     HoldSerializer,
     SeatMapSerializer,
@@ -178,3 +179,22 @@ class CustomerView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(BookingSerializer(booking).data)
+
+
+@extend_schema(summary="Récapitulatif de la réservation", tags=["Réservation"])
+class ConfirmationView(RetrieveAPIView):
+    """Récapitulatif affiché après le paiement (US 3.3)
+
+    Statut PENDING : Stripe n'a pas encore confirmé le paiement, le front
+    relit la route. Une réservation expirée ou annulée renvoie une 404 :
+    pas de confirmation sans paiement (critère 3)
+    """
+
+    serializer_class = ConfirmationSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        release_expired_bookings()
+        return Booking.objects.filter(
+            status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
+        )

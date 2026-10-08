@@ -91,6 +91,11 @@ class Booking(models.Model):
     customer_country = models.CharField(
         "pays (code ISO)", max_length=2, blank=True
     )
+    # Langue du site pendant la réservation : langue de l'email de
+    # confirmation (US 3.3)
+    customer_language = models.CharField(
+        "langue", max_length=2, choices=settings.LANGUAGES, default="fr"
+    )
     total_amount = models.DecimalField(
         "montant total (€)", max_digits=7, decimal_places=2, default=0
     )

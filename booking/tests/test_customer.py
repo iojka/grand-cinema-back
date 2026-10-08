@@ -10,9 +10,9 @@ from booking.services import hold_seats
 pytestmark = pytest.mark.django_db
 
 VALID = {
-    "customer_name": "Samuel Martin",
-    "customer_email": "samuel@example.com",
-    "email_confirmation": "samuel@example.com",
+    "customer_name": "Marine Crognier",
+    "customer_email": "marine@example.com",
+    "email_confirmation": "marine@example.com",
     "customer_postcode": "48000",
     "customer_country": "",
 }
@@ -40,8 +40,8 @@ def test_customer_details_are_saved(client, basket):
 
     assert response.status_code == 200
     basket.refresh_from_db()
-    assert basket.customer_name == "Samuel Martin"
-    assert basket.customer_email == "samuel@example.com"
+    assert basket.customer_name == "Marine Crognier"
+    assert basket.customer_email == "marine@example.com"
     assert basket.customer_postcode == "48000"
 
 
@@ -65,7 +65,7 @@ def test_postcode_or_country_is_needed(client, basket):
 
 def test_both_emails_must_match(client, basket):
     """Critère 2 : l'adresse e-mail est saisie deux fois à l'identique"""
-    response = send(client, basket, email_confirmation="samuel@exemple.com")
+    response = send(client, basket, email_confirmation="marine@exemple.com")
 
     assert response.status_code == 400
 
@@ -75,8 +75,8 @@ def test_invalid_email_is_refused(client, basket):
     response = send(
         client,
         basket,
-        customer_email="samuel.example.com",
-        email_confirmation="samuel.example.com",
+        customer_email="marine.example.com",
+        email_confirmation="marine.example.com",
     )
 
     assert response.status_code == 400
@@ -98,3 +98,19 @@ def test_expired_basket_cannot_be_completed(client, basket):
     response = send(client, basket)
 
     assert response.status_code == 404
+
+
+def test_language_is_saved(client, basket):
+    """US 3.3 : la langue du site sert à l'e-mail de confirmation"""
+    response = send(client, basket, customer_language="en")
+
+    assert response.status_code == 200
+    basket.refresh_from_db()
+    assert basket.customer_language == "en"
+
+
+def test_unknown_language_is_refused(client, basket):
+    """US 3.3 : seuls le français et l'anglais sont proposés"""
+    response = send(client, basket, customer_language="de")
+
+    assert response.status_code == 400

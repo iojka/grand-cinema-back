@@ -1,4 +1,4 @@
-"""Tests de la notification signée envoyée par Stripe (US 3.1)
+"""Tests de la notification signée envoyée par Stripe (US 3.1 et 3.3)
 
 La vérification de signature de Stripe est remplacée par un double de
 test (unittest.mock) : on choisit l'événement « reçu »
@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pytest
 import stripe
+from django.core import mail
 
 from booking.models import Booking, Ticket
 from booking.services import hold_seats
@@ -103,5 +104,48 @@ def test_bad_signature_is_refused(client, basket):
         )
 
     assert response.status_code == 400
+    basket.refresh_from_db()
+    assert basket.status == Booking.Status.PENDING
+
+
+def test_confirmation_email_is_sent(client, basket):
+    """US 3.3, critère 2 : e-mail de confirmation, en français par défaut"""
+    notify(client, paid_event())
+
+    assert len(mail.outbox) == 1
+    email = mail.outbox[0]
+    assert email.to == ["marine@example.com"]
+    assert basket.reference in email.subject
+    assert "confirmée" in email.subject
+    assert "Film test" in email.body
+    assert "A1, A2" in email.body
+
+
+def test_confirmation_email_in_english(client, basket):
+    """US 3.3, critère 2 : e-mail en anglais si le site était en anglais"""
+    basket.customer_language = "en"
+    basket.save()
+
+    notify(client, paid_event())
+
+    assert "confirmed" in mail.outbox[0].subject
+
+
+def test_confirmation_email_is_sent_once(client, basket):
+    """Notification reçue deux fois : un seul e-mail"""
+    notify(client, paid_event())
+    notify(client, paid_event())
+
+    assert len(mail.outbox) == 1
+
+
+def test_no_email_without_payment(client, basket):
+    """US 3.3, critère 3 : paiement non confirmé, aucune confirmation"""
+    event = paid_event()
+    event["data"]["object"]["payment_status"] = "unpaid"
+
+    notify(client, event)
+
+    assert len(mail.outbox) == 0
     basket.refresh_from_db()
     assert basket.status == Booking.Status.PENDING
