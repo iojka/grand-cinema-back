@@ -2,7 +2,13 @@
 
 from django.urls import path
 
-from booking.views import BookingView, HoldView, SeatMapView, TicketPriceView
+from booking.views import (
+    BookingView,
+    CustomerView,
+    HoldView,
+    SeatMapView,
+    TicketPriceView,
+)
 
 urlpatterns = [
     path(
@@ -12,6 +18,11 @@ urlpatterns = [
     ),
     path("holds/", HoldView.as_view(), name="holds"),
     path("bookings/<uuid:pk>/", BookingView.as_view(), name="booking"),
+    path(
+        "bookings/<uuid:pk>/customer/",
+        CustomerView.as_view(),
+        name="booking-customer",
+    ),
     path(
         "bookings/<uuid:pk>/tickets/<uuid:ticket_id>/",
         TicketPriceView.as_view(),
