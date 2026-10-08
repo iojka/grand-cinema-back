@@ -167,6 +167,13 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
+# Paiement Stripe (US 3.1) : clés du mode test, lues dans .env ou dans
+# les secrets Azure, jamais écrites dans le code
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+# Adresse du front : retour du spectateur après la page Stripe
+FRONT_URL = env("FRONT_URL", default="http://localhost:5173")
+
 # CORS : seules les adresses du front listées ici peuvent appeler l'API
 # (local : serveur de développement React ; Azure : Static Web Apps)
 CORS_ALLOWED_ORIGINS = env.list(
