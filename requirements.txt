@@ -17,3 +17,5 @@ whitenoise==6.12.0
 stripe==16.0.0
 # QR code des billets (US 4.1), dessiné avec Pillow
 qrcode==8.2
+# Billet PDF A4 à imprimer (US 4.2)
+reportlab==5.0.1

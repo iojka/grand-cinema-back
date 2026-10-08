@@ -3,23 +3,10 @@
 import pytest
 from django.core.signing import Signer
 
-from booking.models import Booking, Ticket
 from booking.services import hold_seats
 from tickets.services import qr_code_png, ticket_token
 
 pytestmark = pytest.mark.django_db
-
-
-@pytest.fixture
-def paid(screening, seats, price):
-    """Réservation payée de 2 places : billets vendus"""
-    booking = hold_seats(screening, seats[:2])
-    booking.customer_name = "Marine Crognier"
-    booking.customer_email = "marine@example.com"
-    booking.status = Booking.Status.CONFIRMED
-    booking.save()
-    booking.tickets.update(status=Ticket.Status.SOLD)
-    return booking
 
 
 def test_token_is_the_signed_ticket_id(paid):
