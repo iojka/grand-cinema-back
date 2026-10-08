@@ -98,3 +98,19 @@ def test_expired_basket_cannot_be_completed(client, basket):
     response = send(client, basket)
 
     assert response.status_code == 404
+
+
+def test_language_is_saved(client, basket):
+    """US 3.3 : la langue du site sert à l'e-mail de confirmation"""
+    response = send(client, basket, customer_language="en")
+
+    assert response.status_code == 200
+    basket.refresh_from_db()
+    assert basket.customer_language == "en"
+
+
+def test_unknown_language_is_refused(client, basket):
+    """US 3.3 : seuls le français et l'anglais sont proposés"""
+    response = send(client, basket, customer_language="de")
+
+    assert response.status_code == 400
