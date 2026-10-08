@@ -155,8 +155,19 @@ def test_confirmation_email_contains_the_tickets(client, basket):
     """US 4.1, critère 1 : les billets QR code sont envoyés par e-mail"""
     notify(client, paid_event())
 
-    attachments = mail.outbox[0].attachments
-    assert len(attachments) == 2  # un billet par place
-    name, content, mimetype = attachments[0]
+    name, content, mimetype = mail.outbox[0].attachments[0]
     assert name == "billet-A1.png"
     assert mimetype == "image/png"
+
+
+def test_confirmation_email_contains_the_pdf(client, basket):
+    """US 4.2, critères 1 et 3 : billet PDF joint et lien de la réservation"""
+    notify(client, paid_event())
+
+    email = mail.outbox[0]
+    # 2 billets QR code (US 4.1) puis le PDF à imprimer
+    assert len(email.attachments) == 3
+    name, content, mimetype = email.attachments[2]
+    assert name == f"billets-{basket.reference}.pdf"
+    assert mimetype == "application/pdf"
+    assert "/confirmation" in email.body
