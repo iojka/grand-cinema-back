@@ -149,3 +149,14 @@ def test_no_email_without_payment(client, basket):
     assert len(mail.outbox) == 0
     basket.refresh_from_db()
     assert basket.status == Booking.Status.PENDING
+
+
+def test_confirmation_email_contains_the_tickets(client, basket):
+    """US 4.1, critère 1 : les billets QR code sont envoyés par e-mail"""
+    notify(client, paid_event())
+
+    attachments = mail.outbox[0].attachments
+    assert len(attachments) == 2  # un billet par place
+    name, content, mimetype = attachments[0]
+    assert name == "billet-A1.png"
+    assert mimetype == "image/png"
