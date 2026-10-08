@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from booking.models import Booking, Ticket
 from payment.models import StripeEvent
-from tickets.services import qr_code_png
+from tickets.services import qr_code_png, tickets_pdf
 
 # Stripe impose au moins 30 minutes avant l'expiration d'une session
 # de paiement (plus que nos 10 minutes de blocage : voir la D3 Q3)
@@ -34,9 +34,10 @@ EMAILS = {
             "Salle : {room}\n"
             "Places : {seats}\n"
             "Montant payé : {total} €\n\n"
-            "Vos billets QR code sont joints à cet e-mail : présentez-les "
-            "à l'entrée de la salle.\n\n"
-            "Retrouvez votre réservation : {link}\n\n"
+            "Vos billets (QR code et PDF à imprimer) sont joints à cet "
+            "e-mail : présentez-les à l'entrée de la salle.\n\n"
+            "Retrouvez votre réservation et téléchargez de nouveau vos "
+            "billets : {link}\n\n"
             "À bientôt au Grand Cinéma !"
         ),
     },
@@ -51,9 +52,9 @@ EMAILS = {
             "Screen: {room}\n"
             "Seats: {seats}\n"
             "Amount paid: €{total}\n\n"
-            "Your QR code tickets are attached to this email: show them "
-            "at the entrance.\n\n"
-            "See your booking: {link}\n\n"
+            "Your tickets (QR code and PDF to print) are attached to this "
+            "email: show them at the entrance.\n\n"
+            "See your booking and download your tickets again: {link}\n\n"
             "See you soon at Le Grand Cinéma!"
         ),
     },
@@ -159,4 +160,10 @@ def send_confirmation(booking) -> None:
     for ticket in booking.tickets.all():
         seat = f"{ticket.seat.row}{ticket.seat.number}"
         email.attach(f"billet-{seat}.png", qr_code_png(ticket), "image/png")
+    # US 4.2 : les billets à imprimer, en PDF
+    email.attach(
+        f"billets-{booking.reference}.pdf",
+        tickets_pdf(booking),
+        "application/pdf",
+    )
     email.send()
