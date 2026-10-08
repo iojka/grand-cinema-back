@@ -1,4 +1,4 @@
-"""Données de réservation échangées avec l'API (US 2.1 à 2.4)"""
+"""Données de réservation échangées avec l'API (US 2.1 à 2.4, 3.3)"""
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
@@ -198,6 +198,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "email_confirmation",
             "customer_postcode",
             "customer_country",
+            "customer_language",
         ]
         # Champs facultatifs dans le modèle (guichet), obligatoires ici
         extra_kwargs = {
@@ -226,3 +227,24 @@ class CustomerSerializer(serializers.ModelSerializer):
                 "Indiquez votre code postal ou votre pays."
             )
         return data
+
+
+class ConfirmationSerializer(serializers.ModelSerializer):
+    """Récapitulatif de la réservation payée (US 3.3)
+
+    Sans les coordonnées du spectateur : minimisation des données (RGPD)
+    """
+
+    screening = BookingScreeningSerializer(read_only=True)
+    tickets = TicketSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            "id",
+            "reference",
+            "status",
+            "total_amount",
+            "screening",
+            "tickets",
+        ]

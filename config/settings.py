@@ -174,6 +174,14 @@ STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 # Adresse du front : retour du spectateur après la page Stripe
 FRONT_URL = env("FRONT_URL", default="http://localhost:5173")
 
+# Emails (US 3.3) : affichés dans la console, donc dans les journaux du
+# conteneur sur Azure. Un vrai envoi demanderait Azure Communication
+# Services (H-07), non déployé pour l'examen
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
+DEFAULT_FROM_EMAIL = "Le Grand Cinéma <billetterie@legrandcinema.test>"
+
 # CORS : seules les adresses du front listées ici peuvent appeler l'API
 # (local : serveur de développement React ; Azure : Static Web Apps)
 CORS_ALLOWED_ORIGINS = env.list(
