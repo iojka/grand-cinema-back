@@ -1,4 +1,4 @@
-"""Paiement en ligne avec Stripe (US 3.1) et confirmation (US 3.3)
+"""Paiement Stripe (US 3.1), confirmation (US 3.3) et billets (US 4.1)
 
 Le spectateur paie sur la page hébergée par Stripe (3D Secure compris) :
 aucune donnée de carte ne passe par l'application. On ne garde que
@@ -9,12 +9,13 @@ import time
 
 import stripe
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.db import transaction
 from django.utils import timezone
 
 from booking.models import Booking, Ticket
 from payment.models import StripeEvent
+from tickets.services import qr_code_png
 
 # Stripe impose au moins 30 minutes avant l'expiration d'une session
 # de paiement (plus que nos 10 minutes de blocage : voir la D3 Q3)
@@ -33,6 +34,8 @@ EMAILS = {
             "Salle : {room}\n"
             "Places : {seats}\n"
             "Montant payé : {total} €\n\n"
+            "Vos billets QR code sont joints à cet e-mail : présentez-les "
+            "à l'entrée de la salle.\n\n"
             "Retrouvez votre réservation : {link}\n\n"
             "À bientôt au Grand Cinéma !"
         ),
@@ -48,6 +51,8 @@ EMAILS = {
             "Screen: {room}\n"
             "Seats: {seats}\n"
             "Amount paid: €{total}\n\n"
+            "Your QR code tickets are attached to this email: show them "
+            "at the entrance.\n\n"
             "See your booking: {link}\n\n"
             "See you soon at Le Grand Cinéma!"
         ),
@@ -144,9 +149,14 @@ def send_confirmation(booking) -> None:
         "total": total,
         "link": f"{page}/confirmation",
     }
-    send_mail(
+    # Expéditeur : DEFAULT_FROM_EMAIL des réglages
+    email = EmailMessage(
         text["subject"].format(**values),
         text["body"].format(**values),
-        None,  # expéditeur : DEFAULT_FROM_EMAIL des réglages
-        [booking.customer_email],
+        to=[booking.customer_email],
     )
+    # US 4.1 : un billet QR code par place, en pièce jointe
+    for ticket in booking.tickets.all():
+        seat = f"{ticket.seat.row}{ticket.seat.number}"
+        email.attach(f"billet-{seat}.png", qr_code_png(ticket), "image/png")
+    email.send()
