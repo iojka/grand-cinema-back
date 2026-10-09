@@ -1,14 +1,25 @@
-"""API publique de la réservation : plan, blocage, panier (US 2.1 à 3.3)"""
+"""API de la réservation : plan, blocage, panier (US 2.1 à 3.3), guichet
+(US 7.2) et suivi des réservations (US 7.1)
+"""
+
+from datetime import date
 
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import (
+    OpenApiParameter,
     OpenApiResponse,
     extend_schema,
     extend_schema_view,
 )
 from rest_framework import status
-from rest_framework.generics import RetrieveAPIView, RetrieveDestroyAPIView
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import (
+    ListAPIView,
+    RetrieveAPIView,
+    RetrieveDestroyAPIView,
+)
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,6 +37,7 @@ from booking.serializers import (
     HoldSerializer,
     SeatMapSerializer,
     TicketPriceSerializer,
+    TrackingSerializer,
 )
 from booking.services import (
     cancel_booking,
@@ -34,7 +46,7 @@ from booking.services import (
     release_expired_bookings,
     sell_at_box_office,
 )
-from programme.models import next_screenings
+from programme.models import Screening, next_screenings
 
 # Message affiché au spectateur si une place vient d'être prise (critère 2)
 SEAT_TAKEN = (
@@ -249,4 +261,50 @@ class BoxOfficeSaleView(APIView):
         return Response(
             BoxOfficeBookingSerializer(booking).data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+@extend_schema(
+    summary="Suivi des réservations par séance",
+    tags=["Suivi"],
+    parameters=[
+        OpenApiParameter(
+            "date",
+            str,
+            description="Jour suivi (AAAA-MM-JJ), aujourd'hui par défaut",
+        )
+    ],
+)
+class TrackingView(ListAPIView):
+    """Séances d'un jour avec leurs ventes, pour Isabelle (US 7.1)
+
+    Réservé à l'administration, à la direction et à l'accueil (US 9.1)
+    """
+
+    serializer_class = TrackingSerializer
+    permission_classes = [HasRole]
+    allowed_roles = [
+        User.Role.ADMIN,
+        User.Role.MANAGEMENT,
+        User.Role.BOX_OFFICE,
+    ]
+    pagination_class = None  # toutes les séances du jour
+
+    def get_queryset(self):
+        # Jour choisi (critère 3), sinon aujourd'hui (critère 1)
+        text = self.request.query_params.get("date")
+        if text is None:
+            day = timezone.localdate()
+        else:
+            try:
+                day = date.fromisoformat(text)
+            except ValueError:
+                raise ValidationError(
+                    {"date": "Date attendue au format AAAA-MM-JJ."}
+                ) from None
+        return (
+            Screening.objects.filter(starts_at__date=day)
+            .exclude(status=Screening.Status.CANCELLED)
+            .select_related("movie", "room")
+            .order_by("starts_at")
         )
