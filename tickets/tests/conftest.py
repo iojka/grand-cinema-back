@@ -2,6 +2,7 @@
 
 import pytest
 
+from accounts.models import User
 from booking.models import Booking, Ticket
 from booking.services import hold_seats
 
@@ -16,3 +17,16 @@ def paid(screening, seats, price):
     booking.save()
     booking.tickets.update(status=Ticket.Status.SOLD)
     return booking
+
+
+@pytest.fixture
+def agent(make_user):
+    """Agent d'accueil qui contrôle les billets à l'entrée (US 7.3)"""
+    return make_user(User.Role.BOX_OFFICE)
+
+
+@pytest.fixture
+def agent_client(client, agent):
+    """Client de test connecté avec le compte de l'agent d'accueil"""
+    client.force_login(agent)
+    return client
