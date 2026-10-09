@@ -13,10 +13,14 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.models import User
+from accounts.permissions import HasRole
 from booking.models import Booking, Ticket
 from booking.serializers import (
     BookingHoldSerializer,
     BookingSerializer,
+    BoxOfficeBookingSerializer,
+    BoxOfficeSaleSerializer,
     ConfirmationSerializer,
     CustomerSerializer,
     HoldSerializer,
@@ -28,6 +32,7 @@ from booking.services import (
     change_ticket_price,
     hold_seats,
     release_expired_bookings,
+    sell_at_box_office,
 )
 from programme.models import next_screenings
 
@@ -197,4 +202,51 @@ class ConfirmationView(RetrieveAPIView):
         release_expired_bookings()
         return Booking.objects.filter(
             status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
+        )
+
+
+class BoxOfficeSaleView(APIView):
+    """Vente au guichet par un agent d'accueil (US 7.2)
+
+    Réservée au personnel du guichet : le rôle est vérifié par HasRole
+    (US 9.1). La vente est confirmée et payée tout de suite
+    """
+
+    permission_classes = [HasRole]
+    allowed_roles = [User.Role.BOX_OFFICE, User.Role.ADMIN]
+
+    @extend_schema(
+        summary="Vendre des places au guichet",
+        tags=["Guichet"],
+        request=BoxOfficeSaleSerializer,
+        responses={
+            201: BoxOfficeBookingSerializer,
+            400: OpenApiResponse(description="Vente incomplète"),
+            401: OpenApiResponse(description="Agent non connecté"),
+            403: OpenApiResponse(description="Rôle non autorisé"),
+            409: OpenApiResponse(description="Une des places est déjà prise"),
+        },
+    )
+    def post(self, request):
+        release_expired_bookings()
+        serializer = BoxOfficeSaleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            booking = sell_at_box_office(
+                data["screening"],
+                data["tickets"],
+                data["payment_method"],
+                request.user,
+            )
+        except IntegrityError as error:
+            # Place prise en ligne ou à un autre guichet (critère 2)
+            if "unique_seat_per_screening" not in str(error):
+                raise
+            return Response(
+                {"detail": SEAT_TAKEN}, status=status.HTTP_409_CONFLICT
+            )
+        return Response(
+            BoxOfficeBookingSerializer(booking).data,
+            status=status.HTTP_201_CREATED,
         )
