@@ -124,6 +124,20 @@ def confirm_payment(event) -> None:
         # (critère 3). Dans la transaction : si l'envoi échoue, rien
         # n'est enregistré et Stripe renverra la notification
         send_confirmation(booking)
+    elif booking.status in (Booking.Status.EXPIRED, Booking.Status.CANCELLED):
+        # Correctif D3 Q3 : paiement reçu alors que les places ont déjà
+        # été libérées (blocage de 10 minutes dépassé ou panier annulé).
+        # Pas de vente sans place : le spectateur est remboursé
+        refund_payment(session)
+
+
+def refund_payment(session) -> None:
+    """Rembourse le paiement d'une session Stripe (correctif D3 Q3)
+
+    :param session: session de paiement de la notification « payé »
+    """
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    stripe.Refund.create(payment_intent=session["payment_intent"])
 
 
 def send_confirmation(booking) -> None:
