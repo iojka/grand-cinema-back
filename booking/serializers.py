@@ -1,4 +1,6 @@
-"""Données de réservation échangées avec l'API (US 2.1 à 2.4, 3.3)"""
+"""Données de réservation échangées avec l'API (US 2.1 à 2.4, 3.3,
+7.1 et 7.2)
+"""
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
@@ -320,3 +322,56 @@ class BoxOfficeBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ["id", "reference", "total_amount", "payment_method"]
+
+
+class TrackingSerializer(serializers.ModelSerializer):
+    """Suivi d'une séance : places vendues et répartition (US 7.1)
+
+    Les chiffres sont recalculés à chaque lecture (critère 2)
+    """
+
+    movie = serializers.CharField(source="movie.title", read_only=True)
+    room = serializers.CharField(source="room.name", read_only=True)
+    capacity = serializers.IntegerField(source="room.capacity", read_only=True)
+    sold = serializers.SerializerMethodField()
+    web = serializers.SerializerMethodField()
+    box_office = serializers.SerializerMethodField()
+    fill_rate = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Screening
+        fields = [
+            "id",
+            "starts_at",
+            "movie",
+            "room",
+            "capacity",
+            "sold",
+            "web",
+            "box_office",
+            "fill_rate",
+        ]
+
+    def get_sold(self, screening) -> int:
+        """Places vendues, en ligne et au guichet"""
+        return screening.tickets.filter(status=Ticket.Status.SOLD).count()
+
+    def get_web(self, screening) -> int:
+        """Places vendues en ligne"""
+        return screening.tickets.filter(
+            status=Ticket.Status.SOLD, booking__channel=Booking.Channel.WEB
+        ).count()
+
+    def get_box_office(self, screening) -> int:
+        """Places vendues au guichet"""
+        return screening.tickets.filter(
+            status=Ticket.Status.SOLD,
+            booking__channel=Booking.Channel.BOX_OFFICE,
+        ).count()
+
+    def get_fill_rate(self, screening) -> int:
+        """Taux de remplissage en %, arrondi à l'unité"""
+        capacity = screening.room.capacity
+        if capacity == 0:
+            return 0
+        return round(self.get_sold(screening) * 100 / capacity)

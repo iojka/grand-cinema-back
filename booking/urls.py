@@ -10,6 +10,7 @@ from booking.views import (
     HoldView,
     SeatMapView,
     TicketPriceView,
+    TrackingView,
 )
 
 urlpatterns = [
@@ -19,6 +20,7 @@ urlpatterns = [
         name="seat-map",
     ),
     path("holds/", HoldView.as_view(), name="holds"),
+    path("tracking/", TrackingView.as_view(), name="tracking"),
     path(
         "box-office/sales/",
         BoxOfficeSaleView.as_view(),
