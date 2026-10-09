@@ -89,3 +89,44 @@ def cancel_booking(booking) -> None:
     booking.tickets.all().delete()
     booking.status = Booking.Status.CANCELLED
     booking.save()
+
+
+@transaction.atomic
+def sell_at_box_office(screening, tickets, payment_method, agent) -> Booking:
+    """Vend des places au guichet sur le stock unique de places (US 7.2)
+
+    Même contrainte d'unicité qu'en ligne : une place déjà bloquée ou
+    vendue est refusée par la base, même au même moment (critère 2) ;
+    la transaction annule alors toute la vente
+
+    :param screening: séance choisie
+    :param tickets: liste de {"seat": place, "price": tarif}
+    :param payment_method: espèces ou carte via le terminal
+    :param agent: agent d'accueil qui encaisse
+    :return: la réservation confirmée
+    :raises IntegrityError: si une des places est déjà prise
+    """
+    booking = Booking.objects.create(
+        screening=screening,
+        channel=Booking.Channel.BOX_OFFICE,
+        status=Booking.Status.CONFIRMED,
+        payment_method=payment_method,
+        sold_by=agent,
+        confirmed_at=timezone.now(),
+    )
+    total = 0
+    for item in tickets:
+        # Même calcul du prix que sur le site (critère 3)
+        unit_price = item["price"].amount_for(screening.room)
+        Ticket.objects.create(
+            booking=booking,
+            screening=screening,
+            seat=item["seat"],
+            price=item["price"],
+            unit_price=unit_price,
+            status=Ticket.Status.SOLD,
+        )
+        total += unit_price
+    booking.total_amount = total
+    booking.save()
+    return booking
