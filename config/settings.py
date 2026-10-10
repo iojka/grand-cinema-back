@@ -60,13 +60,15 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # Gabarits du projet : bandeau des alertes dans l'admin (US 8.3)
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "dashboard.context_processors.occupancy_alerts",
             ],
         },
     },
@@ -175,6 +177,8 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 # Adresse du front : retour du spectateur après la page Stripe
 FRONT_URL = env("FRONT_URL", default="http://localhost:5173")
+# Adresse de l'API et de l'admin : lien des alertes à Isabelle (US 8.3)
+BACK_OFFICE_URL = env("BACK_OFFICE_URL", default="http://127.0.0.1:8000")
 
 # Emails (US 3.3) : affichés dans la console, donc dans les journaux du
 # conteneur sur Azure. Un vrai envoi demanderait Azure Communication

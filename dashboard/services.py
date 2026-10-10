@@ -1,13 +1,19 @@
 """Calculs des tableaux de bord du pilotage (EPIC 8)
 
-Taux de remplissage = places vendues / capacité de la salle (US 8.1)
+Taux de remplissage = places vendues / capacité de la salle (US 8.1),
+alerte à Isabelle quand une séance franchit le seuil (US 8.3)
 """
 
 from datetime import timedelta
 
+from django.conf import settings
+from django.core.mail import send_mail
+from django.urls import reverse
 from django.utils import timezone
 
+from accounts.models import User
 from booking.models import Booking, Ticket
+from dashboard.models import DEFAULT_THRESHOLD, AlertSetting, OccupancyAlert
 from programme.models import Room, Screening
 
 
@@ -107,3 +113,68 @@ def occupancy(start, end) -> dict:
         "web": sum(web.values()),
         "box_office": sum(box_office.values()),
     }
+
+
+def alert_threshold() -> int:
+    """Seuil d'alerte réglé par Isabelle dans l'admin (US 8.3)
+
+    :return: le seuil en %, 80 si rien n'a été réglé
+    """
+    setting = AlertSetting.objects.first()
+    if setting is None:
+        return DEFAULT_THRESHOLD
+    return setting.threshold
+
+
+def check_occupancy(screening) -> None:
+    """Alerte Isabelle si la séance franchit le seuil (US 8.3)
+
+    Appelée après chaque vente (guichet et paiement en ligne)
+
+    :param screening: séance qui vient d'être vendue
+    """
+    sold = screening.tickets.filter(status=Ticket.Status.SOLD).count()
+    rate = fill_rate(sold, screening.room.capacity)
+    threshold = alert_threshold()
+    if rate < threshold:
+        return
+    # Une seule alerte par séance (critère 2) : get_or_create ne crée
+    # l'alerte que si elle n'existe pas déjà
+    alert, created = OccupancyAlert.objects.get_or_create(
+        screening=screening, defaults={"fill_rate": rate}
+    )
+    if created:
+        send_alert(alert, threshold)
+
+
+def send_alert(alert, threshold) -> None:
+    """Envoie l'alerte par e-mail aux comptes administrateurs
+
+    :param alert: alerte qui vient d'être créée
+    :param threshold: seuil d'alerte franchi, en %
+    """
+    screening = alert.screening
+    starts_at = timezone.localtime(screening.starts_at)
+    # Critère 3 : lien direct vers la séance dans le back office
+    link = settings.BACK_OFFICE_URL + reverse(
+        "admin:programme_screening_change", args=[screening.pk]
+    )
+    subject = (
+        f"Alerte remplissage : {screening.movie.title} "
+        f"le {starts_at:%d/%m} à {alert.fill_rate} %"
+    )
+    message = (
+        "Bonjour,\n\n"
+        f"La séance « {screening.movie.title} » du "
+        f"{starts_at:%d/%m/%Y} à {starts_at:%H:%M} ({screening.room.name}) "
+        "est "
+        f"remplie à {alert.fill_rate} % (seuil d'alerte : {threshold} %).\n"
+        "Pour anticiper le pic, vous pouvez basculer la séance dans une "
+        "salle plus grande ou ajouter une séance :\n"
+        f"{link}\n\n"
+        "Le Grand Cinéma"
+    )
+    recipients = []
+    for user in User.objects.filter(role=User.Role.ADMIN, is_active=True):
+        recipients.append(user.email)
+    send_mail(subject, message, None, recipients)

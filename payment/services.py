@@ -14,6 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from booking.models import Booking, Ticket
+from dashboard.services import check_occupancy
 from payment.models import StripeEvent
 from tickets.services import qr_code_png, tickets_pdf
 
@@ -124,6 +125,8 @@ def confirm_payment(event) -> None:
         # (critère 3). Dans la transaction : si l'envoi échoue, rien
         # n'est enregistré et Stripe renverra la notification
         send_confirmation(booking)
+        # US 8.3 : alerte à Isabelle si la séance franchit le seuil
+        check_occupancy(booking.screening)
     elif booking.status in (Booking.Status.EXPIRED, Booking.Status.CANCELLED):
         # Correctif D3 Q3 : paiement reçu alors que les places ont déjà
         # été libérées (blocage de 10 minutes dépassé ou panier annulé).
