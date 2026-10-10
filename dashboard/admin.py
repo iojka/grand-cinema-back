@@ -1,9 +1,9 @@
-"""Back office du pilotage : réglage et historique des alertes (US 8.3)"""
+"""Back office du pilotage : réglages d'Isabelle et historique des alertes"""
 
 from django.contrib import admin
 
 from accounts.models import User
-from dashboard.models import AlertSetting, OccupancyAlert
+from dashboard.models import AlertSetting, KpiSetting, OccupancyAlert
 from programme.admin import ProgrammationAccess
 
 
@@ -37,3 +37,16 @@ class OccupancyAlertAdmin(AdministrationAccess, admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(KpiSetting)
+class KpiSettingAdmin(AdministrationAccess, admin.ModelAdmin):
+    """Date de lancement et dates du festival (US 8.2)"""
+
+    list_display = ("__str__", "festival_start", "festival_end")
+
+    def has_add_permission(self, request, obj=None):
+        # Un seul réglage : Isabelle le modifie au lieu d'en ajouter un
+        if KpiSetting.objects.exists():
+            return False
+        return super().has_add_permission(request, obj)
