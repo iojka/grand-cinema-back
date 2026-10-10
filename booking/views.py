@@ -46,6 +46,7 @@ from booking.services import (
     release_expired_bookings,
     sell_at_box_office,
 )
+from dashboard.services import check_occupancy
 from programme.models import Screening, next_screenings
 
 # Message affiché au spectateur si une place vient d'être prise (critère 2)
@@ -258,6 +259,8 @@ class BoxOfficeSaleView(APIView):
             return Response(
                 {"detail": SEAT_TAKEN}, status=status.HTTP_409_CONFLICT
             )
+        # US 8.3 : alerte à Isabelle si la séance franchit le seuil
+        check_occupancy(booking.screening)
         return Response(
             BoxOfficeBookingSerializer(booking).data,
             status=status.HTTP_201_CREATED,

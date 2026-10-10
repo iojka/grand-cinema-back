@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+  Bandeau des alertes de remplissage (US 8.3) en haut de chaque page de
+  l'admin. Les alertes viennent de dashboard/context_processors.py
+{% endcomment %}
+{% block messages %}
+  {% if occupancy_alerts %}
+    <ul class="messagelist">
+      {% for alert in occupancy_alerts %}
+        <li class="warning">
+          Alerte remplissage : {{ alert.screening.movie.title }}
+          le {{ alert.screening.starts_at|date:"d/m/Y à H:i" }}
+          ({{ alert.screening.room.name }}) est à {{ alert.fill_rate }} %.
+          <a href="{% url 'admin:programme_screening_change' alert.screening.pk %}">Ouvrir la séance</a>
+          pour la basculer dans une salle plus grande ou en ajouter une.
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}
