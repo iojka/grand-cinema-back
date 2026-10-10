@@ -1,7 +1,8 @@
 """Calculs des tableaux de bord du pilotage (EPIC 8)
 
 Taux de remplissage = places vendues / capacité de la salle (US 8.1),
-alerte à Isabelle quand une séance franchit le seuil (US 8.3)
+indicateurs du projet pour la direction (US 8.2), alerte à Isabelle
+quand une séance franchit le seuil (US 8.3)
 """
 
 from datetime import timedelta
@@ -13,8 +14,35 @@ from django.utils import timezone
 
 from accounts.models import User
 from booking.models import Booking, Ticket
-from dashboard.models import DEFAULT_THRESHOLD, AlertSetting, OccupancyAlert
+from dashboard.models import (
+    DEFAULT_THRESHOLD,
+    AlertSetting,
+    KpiSetting,
+    OccupancyAlert,
+)
 from programme.models import Room, Screening
+
+# Trajectoire du Bloc 1 : entrées par an avant l'application et visées
+BASELINE_PER_YEAR = 405600
+TARGET_PER_YEAR = 527280
+# Cibles du Bloc 1, en %
+ONLINE_TARGET = 60
+PEAK_TARGET = 80
+TOURIST_TARGET = 20
+# Une séance du soir commence à 18 h ou plus tard
+EVENING_HOUR = 18
+
+
+def percent(part, total) -> int:
+    """Calcule un pourcentage
+
+    :param part: nombre compté
+    :param total: nombre total
+    :return: le pourcentage arrondi à l'unité (0 si le total est nul)
+    """
+    if total == 0:
+        return 0
+    return round(part * 100 / total)
 
 
 def fill_rate(sold, capacity) -> int:
@@ -24,9 +52,7 @@ def fill_rate(sold, capacity) -> int:
     :param capacity: capacité de la ou des salles
     :return: le taux en %, arrondi à l'unité (0 si aucune place)
     """
-    if capacity == 0:
-        return 0
-    return round(sold * 100 / capacity)
+    return percent(sold, capacity)
 
 
 def group_rates(lines, key) -> list:
@@ -51,6 +77,17 @@ def group_rates(lines, key) -> list:
     return result
 
 
+def room_capacities() -> dict:
+    """Capacité de chaque salle (le cinéma n'a que quelques salles)
+
+    :return: {id de la salle: nombre de places}
+    """
+    capacities = {}
+    for room in Room.objects.all():
+        capacities[room.pk] = room.capacity
+    return capacities
+
+
 def occupancy(start, end) -> dict:
     """Tableau de bord du remplissage d'une période (US 8.1)
 
@@ -67,10 +104,7 @@ def occupancy(start, end) -> dict:
         .select_related("movie", "room")
         .order_by("starts_at")
     )
-    # Capacité de chaque salle (le cinéma n'a que quelques salles)
-    capacities = {}
-    for room in Room.objects.all():
-        capacities[room.pk] = room.capacity
+    capacities = room_capacities()
     # Places vendues de la période, lues en une seule requête :
     # {id de la séance: nombre de places}
     web = {}
@@ -112,6 +146,125 @@ def occupancy(start, end) -> dict:
         "weeks": group_rates(lines, "week"),
         "web": sum(web.values()),
         "box_office": sum(box_office.values()),
+    }
+
+
+def kpi_setting():
+    """Réglage des indicateurs fait par Isabelle dans l'admin (US 8.2)
+
+    :return: le réglage, ou un réglage par défaut (non enregistré)
+    """
+    setting = KpiSetting.objects.first()
+    if setting is None:
+        return KpiSetting()
+    return setting
+
+
+def in_festival(day, setting) -> bool:
+    """Vérifie qu'un jour fait partie du festival
+
+    :param day: jour à vérifier
+    :param setting: réglage des indicateurs
+    :return: False si les dates du festival ne sont pas réglées
+    """
+    if setting.festival_start is None or setting.festival_end is None:
+        return False
+    return setting.festival_start <= day <= setting.festival_end
+
+
+def is_peak(screening, setting) -> bool:
+    """Séance d'affluence : soir, week-end ou festival (Bloc 1)
+
+    :param screening: séance à vérifier
+    :param setting: réglage des indicateurs
+    """
+    starts_at = timezone.localtime(screening.starts_at)
+    # weekday() : 5 pour samedi, 6 pour dimanche
+    if starts_at.hour >= EVENING_HOUR or starts_at.weekday() >= 5:
+        return True
+    return in_festival(starts_at.date(), setting)
+
+
+def is_tourist(booking) -> bool:
+    """Spectateur qui n'habite pas en Lozère (code postal 48...)
+
+    :param booking: réservation en ligne (US 2.4 : code postal ou pays)
+    """
+    if booking.customer_country not in ("", "FR"):
+        return True
+    return not booking.customer_postcode.startswith("48")
+
+
+def project_kpi(today) -> dict:
+    """Indicateurs du projet pour la direction (US 8.2)
+
+    Recalculés à chaque consultation, du lancement jusqu'au jour donné
+
+    :param today: jour du calcul
+    :return: valeur de chaque indicateur et sa cible
+    """
+    setting = kpi_setting()
+    # Jours écoulés depuis le lancement, jour du lancement compris
+    days = max((today - setting.launch_date).days + 1, 0)
+    screenings = Screening.objects.filter(
+        starts_at__date__gte=setting.launch_date,
+        starts_at__date__lte=today,
+    ).exclude(status=Screening.Status.CANCELLED)
+    # Places vendues par séance, lues en une seule requête
+    sold = {}
+    tickets = Ticket.objects.filter(
+        screening__in=screenings, status=Ticket.Status.SOLD
+    ).values("screening_id")
+    for ticket in tickets:
+        screening_id = ticket["screening_id"]
+        sold[screening_id] = sold.get(screening_id, 0) + 1
+    attendance = sum(sold.values())
+    # Remplissage des séances d'affluence
+    capacities = room_capacities()
+    peak_capacity = 0
+    peak_sold = 0
+    for screening in screenings:
+        if is_peak(screening, setting):
+            peak_capacity += capacities[screening.room_id]
+            peak_sold += sold.get(screening.pk, 0)
+    # Réservations payées, en ligne et au guichet
+    bookings = Booking.objects.filter(
+        screening__in=screenings, status=Booking.Status.CONFIRMED
+    ).select_related("screening")
+    total = 0
+    online = []
+    for booking in bookings:
+        total += 1
+        if booking.channel == Booking.Channel.WEB:
+            online.append(booking)
+    # Touristes : réservations en ligne des séances du festival (le
+    # guichet ne demande pas le lieu de résidence)
+    tourist_share = None
+    if setting.festival_start and setting.festival_end:
+        festival = 0
+        tourists = 0
+        for booking in online:
+            day = timezone.localdate(booking.screening.starts_at)
+            if in_festival(day, setting):
+                festival += 1
+                if is_tourist(booking):
+                    tourists += 1
+        tourist_share = percent(tourists, festival)
+    target = round(TARGET_PER_YEAR * days / 365)
+    return {
+        "today": today.isoformat(),
+        "launch_date": setting.launch_date.isoformat(),
+        "days": days,
+        "attendance": attendance,
+        "target": target,
+        "baseline": round(BASELINE_PER_YEAR * days / 365),
+        "progress": percent(attendance, target),
+        "online_share": percent(len(online), total),
+        "online_target": ONLINE_TARGET,
+        "peak_rate": percent(peak_sold, peak_capacity),
+        "peak_target": PEAK_TARGET,
+        "tourist_share": tourist_share,
+        "tourist_target": TOURIST_TARGET,
     }
 
 
