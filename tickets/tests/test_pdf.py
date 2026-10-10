@@ -30,8 +30,10 @@ def test_one_page_per_ticket(paid):
 def test_printed_qr_code_is_the_mobile_one(paid):
     """Critère 2 : le PDF reprend le QR code affiché sur le téléphone"""
     ticket = paid.tickets.first()
-    # Même billet : même QR code à chaque fois
-    assert qr_code_png(ticket) == qr_code_png(ticket)
+    # Même billet : même QR code à chaque fois (2 appels comparés)
+    first = qr_code_png(ticket)
+    second = qr_code_png(ticket)
+    assert first == second
 
     # Le PDF utilise la même fonction, pour chacune des 2 places
     with patch("tickets.services.qr_code_png", wraps=qr_code_png) as qr:
