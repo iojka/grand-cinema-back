@@ -12,7 +12,8 @@ jobs:
   scan-zap:
     runs-on: ubuntu-latest
 
-    # Lecture seule : les rapports sont des artefacts, pas des issues
+    # Lecture seule : les rapports sont des artefacts, pas des issues.
+    # Actions tierces figées sur un commit précis (règle Sonar S7637)
     permissions:
       contents: read
 
@@ -26,14 +27,14 @@ jobs:
         run: curl --silent --output /dev/null --retry 5 --retry-delay 10 --retry-all-errors --max-time 60 $API_URL/api/docs/
 
       - name: Scanner l'API (documentation Swagger)
-        uses: zaproxy/action-baseline@v0.15.0
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
         with:
           target: ${{ env.API_URL }}/api/docs/
           allow_issue_writing: false
           artifact_name: zap-api
 
       - name: Scanner le site (front React)
-        uses: zaproxy/action-baseline@v0.15.0
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
         with:
           target: ${{ env.FRONT_URL }}
           allow_issue_writing: false
