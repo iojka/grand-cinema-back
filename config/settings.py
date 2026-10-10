@@ -79,7 +79,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Base de données : PostgreSQL 16 dans tous les environnements, car le
 # verrouillage des lignes est indispensable contre la double vente.
 # Exemple local :
-#   postgres://grandcinema:grandcinema@localhost:5433/grandcinema
+#   postgres://<user>:<mdp>@localhost:5433/grandcinema
 # Exemple Azure (connexion chiffrée obligatoire) :
 #   postgres://<user>:<mdp>@<serveur>.postgres.database.azure.com:5432/
 #   grandcinema?sslmode=require
