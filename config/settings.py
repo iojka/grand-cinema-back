@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "booking",  # M2 Réservation et stock de places (EPIC 2 et 7)
     "payment",  # M3 Paiement (EPIC 3)
     "tickets",  # M4 Billets et contrôle d'accès (EPIC 4 et US 7.3)
+    "dashboard",  # M5 Pilotage (EPIC 8)
 ]
 
 MIDDLEWARE = [
