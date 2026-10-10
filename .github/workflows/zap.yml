@@ -1,0 +1,40 @@
+# Scan de sécurité OWASP ZAP de la préproduction (NF6), lancé à la main
+# depuis l'onglet Actions avant une mise en production.
+# Scan « baseline » : ZAP parcourt les pages et analyse les réponses
+# (en-têtes, cookies, fuites d'informations) sans envoyer d'attaque,
+# donc sans risque pour les données de la préproduction.
+name: Scan de sécurité ZAP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scan-zap:
+    runs-on: ubuntu-latest
+
+    # Lecture seule : les rapports sont des artefacts, pas des issues
+    permissions:
+      contents: read
+
+    env:
+      API_URL: https://ca-grandcinema-preprod-fr.niceriver-d1b5328b.francecentral.azurecontainerapps.io
+      FRONT_URL: https://brave-meadow-061c73103.4.azurestaticapps.net
+
+    steps:
+      # L'API s'arrête sans visite (coût) : on la réveille avant le scan
+      - name: Réveiller l'API
+        run: curl --silent --output /dev/null --retry 5 --retry-delay 10 --retry-all-errors --max-time 60 $API_URL/api/docs/
+
+      - name: Scanner l'API (documentation Swagger)
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: ${{ env.API_URL }}/api/docs/
+          allow_issue_writing: false
+          artifact_name: zap-api
+
+      - name: Scanner le site (front React)
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: ${{ env.FRONT_URL }}
+          allow_issue_writing: false
+          artifact_name: zap-front
