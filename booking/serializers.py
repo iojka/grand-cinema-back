@@ -13,6 +13,7 @@ from programme.serializers import MovieSerializer, ScreeningSerializer
 # État d'une place sans billet pour la séance (les autres états sont
 # ceux du billet : HELD bloquée, SOLD vendue)
 FREE = "FREE"
+MAX_SEATS_PER_BOOKING = 6
 
 
 class SeatSerializer(serializers.ModelSerializer):
@@ -113,6 +114,11 @@ class HoldSerializer(serializers.Serializer):
         Côte à côte : même rangée et numéros qui se suivent ; le maximum
         est donc la taille de la rangée (critère 1)
         """
+        if len(data["seats"]) > MAX_SEATS_PER_BOOKING:
+            raise serializers.ValidationError(
+                f"Une réservation est limitée à {MAX_SEATS_PER_BOOKING} "
+                "places."
+            )
         screening = data["screening"]
         seats = sorted(data["seats"], key=lambda seat: seat.number)
         for seat in seats:
