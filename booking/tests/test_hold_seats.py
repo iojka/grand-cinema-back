@@ -10,6 +10,7 @@ from django.test import Client
 from django.utils import timezone
 
 from booking.models import Booking, Ticket
+from programme.models import Seat
 
 HOLDS_URL = "/api/booking/holds/"
 
@@ -118,3 +119,18 @@ def test_only_one_of_two_simultaneous_holds_succeeds(screening, seats, price):
 
     assert sorted(results) == [201, 409]
     assert Ticket.objects.filter(seat=seats[0]).count() == 1
+
+
+@pytest.mark.django_db
+def test_booking_is_limited_to_6_seats(client, room, screening, price):
+    """Règle de la direction : 6 places maximum par réservation"""
+    seats = [
+        Seat.objects.create(room=room, row="B", number=number)
+        for number in range(1, 8)
+    ]
+
+    response = hold(client, screening, seats)
+
+    assert response.status_code == 400
+    assert "6 places" in str(response.json())
+    assert Ticket.objects.count() == 0
